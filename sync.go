@@ -28,6 +28,15 @@ func (d *DB) setStatus(s Status) {
 	d.statusCd.Broadcast()
 }
 
+// GetStatus returns the current status of this database instance
+func (d *DB) GetStatus() Status {
+	d.statusLk.RLock()
+	defer d.statusLk.RUnlock()
+
+	return d.status
+}
+
+// WaitReady waits for the database instance to be ready, or does nothing if it is already ready
 func (d *DB) WaitReady() {
 	d.statusLk.RLock()
 	defer d.statusLk.RUnlock()
