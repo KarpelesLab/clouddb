@@ -12,7 +12,7 @@ import (
 )
 
 func TestSyncRPC(t *testing.T) {
-	rpc := rpctest.NewSync()
+	rpc := rpctest.NewSyncLog()
 	rpca := rpc.NewPeer("a")
 	rpcb := rpc.NewPeer("b")
 
