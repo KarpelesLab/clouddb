@@ -31,6 +31,7 @@ leveldb prefixes are fixed at 3 bytes for ease of storage.
 * nfo+id = version (16 bytes current record version)
 * kdt+id = keys (key data, 32 bits length of key followed by key, repeated for each key)
 * typ+type_name = type data
+* chk+id = checkpoint
 
 ### Journal
 

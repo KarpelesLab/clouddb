@@ -24,9 +24,13 @@ type Log struct {
 	Version RecordVersion
 	Data    json.RawMessage
 	dataobj map[string]any // cached representation of Data
+	res     chan error
 }
 
-func (l *Log) apply(d *DB, b *leveldb.Batch, force bool) error {
+func (l *Log) apply(d *DB, b *leveldb.Batch) error {
+	// force if we cannot report errors (ie. if l.res is nil)
+	force := l.res == nil
+
 	switch l.Type {
 	case RecordSet:
 		nfoKey := append([]byte("nfo"), l.Id...)

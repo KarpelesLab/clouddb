@@ -90,6 +90,7 @@ func (d *DB) recv(ctx context.Context, buf []byte) ([]byte, error) {
 		return nil, d.rpc.Send(ctx, string(buf[1:]), res)
 	case PktGetInfoResp:
 		// Receive response
+		log.Printf("got response!")
 	default:
 		log.Printf("[clouddb] Received object %d", buf[0])
 	}

@@ -25,6 +25,8 @@ type DB struct {
 	statusLk sync.RWMutex
 	statusCd *sync.Cond
 
+	runq chan *Log
+
 	typMap map[string]*Type
 	typLk  sync.RWMutex
 }
@@ -57,6 +59,7 @@ func New(name string, rpc RPC) (*DB, error) {
 		store:  db,
 		rpc:    rpc,
 		start:  time.Now(),
+		runq:   make(chan *Log),
 		typMap: make(map[string]*Type),
 	}
 	res.statusCd = sync.NewCond(res.statusLk.RLocker())
@@ -64,6 +67,7 @@ func New(name string, rpc RPC) (*DB, error) {
 		rpc.Connect(res.recv)
 	}
 
+	go res.runner()
 	go res.process()
 
 	return res, nil
@@ -104,18 +108,9 @@ func (d *DB) Delete(id []byte) error {
 
 // newLog receives & process an locally created log record
 func (d *DB) newLog(l *Log) error {
-	// store
-	b := &leveldb.Batch{}
-	err := l.apply(d, b, false)
-	if err != nil {
-		// something went wrong
-		return err
-	}
-
-	// TODO broadcast log
-
-	// write
-	return d.store.Write(b, nil)
+	l.res = make(chan error)
+	d.runq <- l
+	return <-l.res
 }
 
 // Get will load and apply the object for the given id to target
