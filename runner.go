@@ -59,9 +59,27 @@ func (d *DB) runner() {
 
 			b.Replay(rc)
 			goodLogs = append(goodLogs, l)
+
+			if l.res != nil {
+				// broadcast log here
+			}
 		}
 
 		// update checkpoint
+		cache := make(map[int64]*checkpoint)
+		for _, l := range goodLogs {
+			ckpt, err := d.nextCheckpointFor(cache, l.Version)
+			if err != nil {
+				log.Printf("[clouddb] failed to fetch checkpoint: %s", err)
+				// drop the whole update because wtf
+				continue
+			}
+			ckpt.add(l)
+		}
+		for _, ckpt := range cache {
+			// store new value for checkpoint
+			rc.Put(ckpt.key(), ckpt.Bytes())
+		}
 
 		// write locally
 		err := d.store.Write(rc.Batch(), nil)
@@ -75,7 +93,7 @@ func (d *DB) runner() {
 			log.Printf("[clouddb] write to local db failed: %s", err)
 		}
 
-		// broadcast log here?
+		// broadcast log ids here
 
 		// truncate but not unallocate
 		logs = logs[:0]

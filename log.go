@@ -6,6 +6,7 @@ import (
 	"encoding/binary"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
 
 	"github.com/syndtr/goleveldb/leveldb"
@@ -246,4 +247,15 @@ func (l *Log) UnmarshalBinary(buf []byte) error {
 	}
 	l.Data = buf[26+idLen:]
 	return nil
+}
+
+func (l *Log) String() string {
+	switch l.Type {
+	case RecordSet:
+		return fmt.Sprintf("Log SET t=%s id=%q data=%s", l.Version.Time(), l.Id, l.Data)
+	case RecordDelete:
+		return fmt.Sprintf("Log DELETE t=%s id=%q", l.Version.Time(), l.Id)
+	default:
+		return fmt.Sprintf("Log %d(?) t=%s id=%q data=%s", l.Type, l.Version.Time(), l.Id, l.Data)
+	}
 }

@@ -14,8 +14,37 @@ type checkpoint struct {
 	epoch     int64 // checkpoint epoch, equals time.Now().Unix()/86400 (increments by 1 every 24 hours)
 	db        *DB
 	logcnt    uint64 // number of log count in epoch
-	totlogcnt uint64 // total log count in db lifetime
+	totlogcnt uint64 // total log count in db lifetime (zero for now)
 	logsum    []byte // xor of hash of logs (helps detect case when logcnt is equal but a missing log is replaced by another) we use xor to ensure that a+b+c == c+b+a
+}
+
+func (d *DB) nextCheckpointFor(cache map[int64]*checkpoint, t RecordVersion) (*checkpoint, error) {
+	epoch := t.epoch()
+	if v, ok := cache[epoch]; ok {
+		return v, nil
+	}
+
+	// load from db (if any)
+	dat, err := d.store.Get(checkpointKey(epoch+1), nil)
+	if err != nil {
+		if errors.Is(err, leveldb.ErrNotFound) {
+			// generate
+			ckpt := &checkpoint{epoch: epoch + 1, db: d, logsum: make([]byte, 32)}
+			cache[ckpt.epoch] = ckpt
+			return ckpt, nil
+		}
+		// ???
+		return nil, err
+	}
+
+	ckpt := &checkpoint{}
+	err = ckpt.UnmarshalBinary(dat)
+	if err != nil {
+		return nil, err
+	}
+	cache[ckpt.epoch] = ckpt
+
+	return ckpt, nil
 }
 
 func currentEpoch() int64 {
@@ -56,6 +85,10 @@ func (d *DB) loadCheckpoint(epoch int64) (*checkpoint, error) {
 	return chk, err
 }
 
+func (c *checkpoint) Time() time.Time {
+	return time.Unix(c.epoch*86400, 0)
+}
+
 func (c *checkpoint) UnmarshalBinary(b []byte) error {
 	// parse checkpoint
 	// format: <version+flags>:uint32 <epoch>:int64 <logcnt>:uint64 <totlogcnt>:uint64 <logsum>:32bytes 4+8*3+32=60 bytes
@@ -82,4 +115,21 @@ func (c *checkpoint) Bytes() []byte {
 	binary.BigEndian.PutUint64(buf[20:28], c.totlogcnt)
 	copy(buf[28:], c.logsum)
 	return buf
+}
+
+func (c *checkpoint) key() []byte {
+	return checkpointKey(c.epoch)
+}
+
+func (c *checkpoint) add(l *Log) {
+	// add log
+	c.logcnt += 1
+	h := l.Hash()
+	for i := range c.logsum {
+		c.logsum[i] ^= h[i]
+	}
+}
+
+func (c *checkpoint) String() string {
+	return fmt.Sprintf("Checkpoint epoch=%s cnt=%d xhash=%x", c.Time(), c.logcnt, c.logsum)
 }

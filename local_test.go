@@ -139,4 +139,6 @@ func TestLocal(t *testing.T) {
 	} else if n, ok := v["canary"].(float64); string(id) != "trec006" || !ok || n != 4 {
 		t.Errorf("invalid record returned for hello=1&bar=a: %v", v)
 	}
+
+	db.DebugDump(os.Stderr)
 }

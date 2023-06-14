@@ -44,6 +44,10 @@ func (r RecordVersion) Bytes() []byte {
 	return res
 }
 
+func (r RecordVersion) epoch() int64 {
+	return r.unix / 86400
+}
+
 // Put will put the content of this version in the provided buffer which must be 16 bytes
 func (r RecordVersion) Put(b []byte) {
 	binary.BigEndian.PutUint64(b[:8], uint64(r.unix))

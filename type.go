@@ -138,8 +138,6 @@ func (t *Type) computeIndices(id []byte, v any) [][]byte {
 	}
 
 	switch n := v.(type) {
-	case Record:
-		v, _ = n.Value()
 	case json.RawMessage:
 		var v any
 		json.Unmarshal(n, &v)
