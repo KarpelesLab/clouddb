@@ -6,9 +6,11 @@ import (
 	"github.com/syndtr/goleveldb/leveldb"
 )
 
+const runnerLogBuffer = 32
+
 func (d *DB) runner() {
-	logs := make([]*Log, 0, 32)
-	goodLogs := make([]*Log, 0, 32)
+	logs := make([]*Log, 0, runnerLogBuffer)
+	goodLogs := make([]*Log, 0, runnerLogBuffer)
 
 	for {
 		// wait for log to come
@@ -16,7 +18,7 @@ func (d *DB) runner() {
 
 		// attempt to feed more pending logs to batch together
 	feedloop:
-		for len(logs) < 32 {
+		for len(logs) < runnerLogBuffer {
 			select {
 			case l := <-d.runq:
 				logs = append(logs, l)
@@ -32,6 +34,7 @@ func (d *DB) runner() {
 			err := l.apply(d, b)
 			if err != nil {
 				if l.res != nil {
+					// an error happened for a log entry we created locally, this is typically linked to a duplicate key or something similar, anyway we can just report his as an error
 					l.res <- err
 					continue
 				}
@@ -44,8 +47,6 @@ func (d *DB) runner() {
 			goodLogs = append(goodLogs, l)
 		}
 
-		// broadcast log here?
-
 		// write locally
 		err := d.store.Write(b, nil)
 		for _, l := range goodLogs {
@@ -56,8 +57,9 @@ func (d *DB) runner() {
 		}
 		if err != nil {
 			log.Printf("[clouddb] write to local db failed: %s", err)
-			// don't panic on write failure because we already broadcasted the logs
 		}
+
+		// broadcast log here?
 
 		// truncate but not unallocate
 		logs = logs[:0]
