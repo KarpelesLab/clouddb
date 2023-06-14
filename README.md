@@ -41,6 +41,7 @@ Key: `log` + timestamp(16bytes) + hash(sha256)
 
 * We perform one checkpoint every 24 hours
 * Checkpoint is rounded timestamp + number of log entries in the past 24 hours + xor of log keys
+* We only keep 100 latest checkpoints (3+ months)
 
 ## snapshots
 

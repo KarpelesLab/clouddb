@@ -1,10 +1,14 @@
 package clouddb
 
 import (
+	"bytes"
 	"context"
+	"encoding/binary"
 	"fmt"
 	"log"
 	"time"
+
+	"github.com/syndtr/goleveldb/leveldb/util"
 )
 
 func (d *DB) process() {
@@ -97,15 +101,43 @@ func (d *DB) recv(ctx context.Context, buf []byte) ([]byte, error) {
 	case PktGetInfo:
 		// return info
 		// if len(buf)==1 (empty packet) we return the data, else the data afterward is a node id we need to send the response to
-		res := []byte{PktGetInfoResp}
+		res := &bytes.Buffer{}
+		res.WriteByte(PktGetInfoResp)
+		selfId := d.rpc.Self()
+		binary.Write(res, binary.BigEndian, uint16(len(selfId)))
+		res.WriteString(selfId)
+
+		// write all my checkpoints
+		iter := d.store.NewIterator(util.BytesPrefix([]byte("chk")), nil)
+		defer iter.Release()
+
+		for iter.Next() {
+			// checkpoints have a fixed 60 bytes length, so we can just write all of them continuously (max 6kB of data)
+			res.Write(iter.Value())
+		}
+
 		if len(buf) == 1 {
-			return res, nil
+			return res.Bytes(), nil
 		}
 		// send packet
-		return nil, d.rpc.Send(ctx, string(buf[1:]), res)
+		return nil, d.rpc.Send(ctx, string(buf[1:]), res.Bytes())
 	case PktGetInfoResp:
 		// Receive response
-		log.Printf("got response!")
+		buf = buf[1:]
+		if len(buf) < 2 {
+			log.Printf("bad PktGetInfoResp pkt")
+			return nil, nil
+		}
+		ln := binary.BigEndian.Uint16(buf[:2])
+		buf = buf[2:]
+		if len(buf) < int(ln) {
+			log.Printf("bad PktGetInfoResp pkt 2")
+			return nil, nil
+		}
+		remote := string(buf[:ln])
+		_ = remote
+		buf = buf[ln:] // should be checkpoints starting this point
+		log.Printf("todo check checkpoints ln=%d", len(buf))
 	default:
 		log.Printf("[clouddb] Received object %d", buf[0])
 	}
