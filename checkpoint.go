@@ -18,7 +18,7 @@ type checkpoint struct {
 	logsum    []byte // xor of hash of logs (helps detect case when logcnt is equal but a missing log is replaced by another) we use xor to ensure that a+b+c == c+b+a
 }
 
-func (d *DB) nextCheckpointFor(cache map[int64]*checkpoint, t RecordVersion) (*checkpoint, error) {
+func (d *DB) nextCheckpointFor(cache map[int64]*checkpoint, t recordVersion) (*checkpoint, error) {
 	epoch := t.epoch()
 	if v, ok := cache[epoch]; ok {
 		return v, nil

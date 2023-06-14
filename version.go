@@ -5,37 +5,37 @@ import (
 	"time"
 )
 
-type RecordVersion struct {
+type recordVersion struct {
 	unix  int64
 	nano  uint32 // range [0, 999,999,999]
 	srvid uint32 // server numeric id, so we can differenciate records generated at the exact same time (optional)
 }
 
-func newRecordVersion() RecordVersion {
+func newRecordVersion() recordVersion {
 	n := time.Now()
-	r := RecordVersion{
+	r := recordVersion{
 		unix: n.Unix(),
 		nano: uint32(n.Nanosecond()),
 	}
 	return r
 }
 
-func parseRecordVersion(buf []byte) RecordVersion {
+func parseRecordVersion(buf []byte) recordVersion {
 	// we assume buf will always be 16 bytes
 
-	return RecordVersion{
+	return recordVersion{
 		unix:  int64(binary.BigEndian.Uint64(buf[:8])),
 		nano:  binary.BigEndian.Uint32(buf[8:12]),
 		srvid: binary.BigEndian.Uint32(buf[12:16]),
 	}
 }
 
-// Time returns a time.Time object matching the passed RecordVersion
-func (r RecordVersion) Time() time.Time {
+// Time returns a time.Time object matching the passed recordVersion
+func (r recordVersion) Time() time.Time {
 	return time.Unix(r.unix, int64(r.nano))
 }
 
-func (r RecordVersion) Bytes() []byte {
+func (r recordVersion) Bytes() []byte {
 	res := make([]byte, 16)
 	binary.BigEndian.PutUint64(res[:8], uint64(r.unix))
 	binary.BigEndian.PutUint32(res[8:12], r.nano)
@@ -44,18 +44,18 @@ func (r RecordVersion) Bytes() []byte {
 	return res
 }
 
-func (r RecordVersion) epoch() int64 {
+func (r recordVersion) epoch() int64 {
 	return r.unix / 86400
 }
 
 // Put will put the content of this version in the provided buffer which must be 16 bytes
-func (r RecordVersion) Put(b []byte) {
+func (r recordVersion) Put(b []byte) {
 	binary.BigEndian.PutUint64(b[:8], uint64(r.unix))
 	binary.BigEndian.PutUint32(b[8:12], r.nano)
 	binary.BigEndian.PutUint32(b[12:], r.srvid)
 }
 
-func (r RecordVersion) Less(r2 RecordVersion) bool {
+func (r recordVersion) Less(r2 recordVersion) bool {
 	// return true if r < r2
 	if r.unix < r2.unix {
 		return true

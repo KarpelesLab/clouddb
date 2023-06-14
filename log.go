@@ -22,7 +22,7 @@ const (
 type dblog struct {
 	Type    dblogType
 	Id      []byte
-	Version RecordVersion
+	Version recordVersion
 	Data    json.RawMessage
 	dataobj map[string]any // cached representation of Data
 	res     chan error
