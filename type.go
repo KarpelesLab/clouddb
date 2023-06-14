@@ -243,12 +243,14 @@ func (k *TypeKey) computeSearchPrefix(t *Type, search map[string]any) ([]byte, e
 func (k *TypeKey) encodeValue(ctx *encodeValueContext, val any) []byte {
 	switch k.Method {
 	case "utf8": // utf8_general_ci
-		col := collate.New(language.Und, collate.IgnoreCase, collate.IgnoreWidth)
+		col := collate.New(language.Und, collate.Loose)
 		ss, _ := typutil.AsString(val)
 		if ctx.colBuf == nil {
 			ctx.colBuf = &collate.Buffer{}
 		}
-		return col.KeyFromString(ctx.colBuf, ss)
+		res := col.KeyFromString(ctx.colBuf, ss)
+		//log.Printf("ss = %s key = %x", ss, res)
+		return res
 	case "binary":
 		ss, _ := typutil.AsString(val)
 		return []byte(ss)

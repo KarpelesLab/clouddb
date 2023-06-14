@@ -101,4 +101,17 @@ func TestLocal(t *testing.T) {
 	} else if n, ok := v["canary"].(float64); !ok || n != 1 {
 		t.Errorf("invalid record returned for bar=b1: %v", v)
 	}
+
+	// test collation
+	err = db.Set([]byte("trec005"), map[string]any{"@type": "test1", "foo": "HÉｈé", "canary": 3})
+	if err != nil {
+		t.Errorf("failed to insert trec005: %s", err)
+	}
+	v = nil
+	err = db.SearchFirst("test1", map[string]any{"foo": "hehe"}, &v)
+	if err != nil {
+		t.Errorf("failed to fetch trec005 record: %s", err)
+	} else if n, ok := v["canary"].(float64); !ok || n != 3 {
+		t.Errorf("invalid record returned for foo=hehe: %v", v)
+	}
 }
