@@ -76,10 +76,10 @@ func TestLocal(t *testing.T) {
 
 	// fetch record
 	var v map[string]any
-	err = db.SearchFirst("test1", map[string]any{"foo": "bar"}, &v)
+	id, err := db.SearchFirst("test1", map[string]any{"foo": "bar"}, &v)
 	if err != nil {
 		t.Errorf("failed to fetch record: %s", err)
-	} else if a, b := v["irrelevant"].(bool); !a || !b {
+	} else if a, b := v["irrelevant"].(bool); string(id) != "trec001" || !a || !b {
 		t.Errorf("invalid record fetch from db: %v (expected: map[@type:test1 foo:bar irrelevant:true])", v)
 	}
 
@@ -95,10 +95,10 @@ func TestLocal(t *testing.T) {
 
 	// find first value with bar=b1 which should have canary=1
 	v = nil
-	err = db.SearchFirst("test1", map[string]any{"bar": "b1"}, &v)
+	id, err = db.SearchFirst("test1", map[string]any{"bar": "b1"}, &v)
 	if err != nil {
 		t.Errorf("failed to fetch trec003 record: %s", err)
-	} else if n, ok := v["canary"].(float64); !ok || n != 1 {
+	} else if n, ok := v["canary"].(float64); string(id) != "trec003" || !ok || n != 1 {
 		t.Errorf("invalid record returned for bar=b1: %v", v)
 	}
 
@@ -108,10 +108,35 @@ func TestLocal(t *testing.T) {
 		t.Errorf("failed to insert trec005: %s", err)
 	}
 	v = nil
-	err = db.SearchFirst("test1", map[string]any{"foo": "hehe"}, &v)
+	id, err = db.SearchFirst("test1", map[string]any{"foo": "hehe"}, &v)
 	if err != nil {
 		t.Errorf("failed to fetch trec005 record: %s", err)
-	} else if n, ok := v["canary"].(float64); !ok || n != 3 {
+	} else if n, ok := v["canary"].(float64); string(id) != "trec005" || !ok || n != 3 {
 		t.Errorf("invalid record returned for foo=hehe: %v", v)
+	}
+
+	// test multiple col unique keys
+	err = db.Set([]byte("trec006"), map[string]any{"@type": "test1", "hello": 1, "bar": "a", "canary": 4})
+	if err != nil {
+		t.Errorf("failed to insert trec006: %s", err)
+	}
+	err = db.Set([]byte("trec007"), map[string]any{"@type": "test1", "hello": 1, "bar": "a", "canary": 5})
+	if err == nil {
+		t.Errorf("insert succeeded where it should have failed (duplicate value hello=1&bar=a)")
+	} else if !errors.Is(err, clouddb.ErrKeyConflict) {
+		t.Errorf("unexpected error on dup value hello=1&bar=a: %s", err)
+	}
+	err = db.Set([]byte("trec008"), map[string]any{"@type": "test1", "hello": 1, "bar": "b", "canary": 6})
+	if err != nil {
+		t.Errorf("failed to insert trec008: %s", err)
+	}
+
+	// load from multiple cols
+	v = nil
+	id, err = db.SearchFirst("test1", map[string]any{"hello": 1, "bar": "a"}, &v)
+	if err != nil {
+		t.Errorf("failed to fetch trec006 record: %s", err)
+	} else if n, ok := v["canary"].(float64); string(id) != "trec006" || !ok || n != 4 {
+		t.Errorf("invalid record returned for hello=1&bar=a: %v", v)
 	}
 }

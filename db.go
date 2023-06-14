@@ -142,25 +142,25 @@ func (d *DB) GetRaw(id []byte) (json.RawMessage, error) {
 
 // SearchFirst will find the first record matching the search params and set target
 // search must match an existing key in the provided type
-func (d *DB) SearchFirst(typ string, search map[string]any, target any) error {
-	v, err := d.SearchFirstRaw(typ, search)
+func (d *DB) SearchFirst(typ string, search map[string]any, target any) ([]byte, error) {
+	id, v, err := d.SearchFirstRaw(typ, search)
 	if err != nil {
-		return err
+		return nil, err
 	}
-	return json.Unmarshal(v, target)
+	return id, json.Unmarshal(v, target)
 }
 
 // SearchFirstRaw will find the first record matching the search params and return its json value
 // search must match an existing key in the provided type
-func (d *DB) SearchFirstRaw(typ string, search map[string]any) (json.RawMessage, error) {
+func (d *DB) SearchFirstRaw(typ string, search map[string]any) ([]byte, json.RawMessage, error) {
 	t, err := d.getType(typ)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	// attempt to find index
 	pfx, err := t.findSearchPrefix(search)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	// search with idx+pfx
 	kPfx := append([]byte("idx"), pfx...)
@@ -168,9 +168,11 @@ func (d *DB) SearchFirstRaw(typ string, search map[string]any) (json.RawMessage,
 	defer iter.Release()
 
 	for iter.Next() {
-		return d.GetRaw(iter.Value())
+		id := iter.Value()
+		res, err := d.GetRaw(id)
+		return id, res, err
 	}
-	return nil, fs.ErrNotExist
+	return nil, nil, fs.ErrNotExist
 }
 
 func (d *DB) String() string {
