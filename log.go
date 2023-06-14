@@ -27,14 +27,15 @@ type Log struct {
 	res     chan error
 }
 
-func (l *Log) apply(d *DB, b *leveldb.Batch) error {
+// apply will execute this log after performing a number of checks
+func (l *Log) apply(rc *runContext, b *leveldb.Batch) error {
 	// force if we cannot report errors (ie. if l.res is nil)
 	force := l.res == nil
 
 	switch l.Type {
 	case RecordSet:
 		nfoKey := append([]byte("nfo"), l.Id...)
-		nfo, err := d.store.Get(nfoKey, nil)
+		nfo, err := rc.Get(nfoKey)
 		if err != nil {
 			if !errors.Is(err, leveldb.ErrNotFound) {
 				return err
@@ -49,13 +50,13 @@ func (l *Log) apply(d *DB, b *leveldb.Batch) error {
 			}
 		}
 		// store
-		beforeKeys, err := d.getKeys(l.Id)
+		beforeKeys, err := rc.getKeys(l.Id)
 		if err != nil {
 			return err
 		}
 		beforeKeysMap := keysToMap(beforeKeys)
 
-		keys, err := l.getObjectKeys(d)
+		keys, err := l.getObjectKeys(rc.db)
 		if err != nil {
 			return err
 		}
@@ -68,7 +69,7 @@ func (l *Log) apply(d *DB, b *leveldb.Batch) error {
 				continue
 			}
 			kS := append([]byte("idx"), k...)
-			v, err := d.store.Get(kS, nil)
+			v, err := rc.Get(kS)
 			if err == nil {
 				if !force && !bytes.Equal(v, l.Id) {
 					return ErrKeyConflict
@@ -91,7 +92,7 @@ func (l *Log) apply(d *DB, b *leveldb.Batch) error {
 		return nil
 	case RecordDelete:
 		nfoKey := append([]byte("nfo"), l.Id...)
-		nfo, err := d.store.Get(nfoKey, nil)
+		nfo, err := rc.Get(nfoKey)
 		if err != nil {
 			if !errors.Is(err, leveldb.ErrNotFound) {
 				return err
@@ -106,7 +107,7 @@ func (l *Log) apply(d *DB, b *leveldb.Batch) error {
 			}
 		}
 		// read keys for records
-		keys, err := d.getKeys(l.Id)
+		keys, err := rc.getKeys(l.Id)
 		if err != nil {
 			return err
 		}

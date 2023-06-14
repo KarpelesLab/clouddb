@@ -1,6 +1,7 @@
 package clouddb
 
 import (
+	"errors"
 	"log"
 
 	"github.com/syndtr/goleveldb/leveldb"
@@ -8,6 +9,9 @@ import (
 
 const runnerLogBuffer = 32
 
+// runner is a background routine processing incoming log entries in sequential order. This helps ensure that
+// some checks, such as if a log is already applied, won't run in parallel. This method can receive logs from
+// multiple threads and will run these at the same time.
 func (d *DB) runner() {
 	logs := make([]*Log, 0, runnerLogBuffer)
 	goodLogs := make([]*Log, 0, runnerLogBuffer)
@@ -28,10 +32,19 @@ func (d *DB) runner() {
 		}
 
 		// store
-		b := &leveldb.Batch{}
+		rc := d.newRunCtx()
 
 		for _, l := range logs {
-			err := l.apply(d, b)
+			if ret, err := d.store.Has(l.key(), nil); err == nil && ret {
+				// we already know this log
+				if l.res != nil {
+					// should not happen in theory
+					l.res <- errors.New("log entry already known - this error should not appear, please contact support")
+				}
+				continue
+			}
+			b := &leveldb.Batch{}
+			err := l.apply(rc, b)
 			if err != nil {
 				if l.res != nil {
 					// an error happened for a log entry we created locally, this is typically linked to a duplicate key or something similar, anyway we can just report his as an error
@@ -44,11 +57,12 @@ func (d *DB) runner() {
 				continue
 			}
 
+			b.Replay(rc)
 			goodLogs = append(goodLogs, l)
 		}
 
 		// write locally
-		err := d.store.Write(b, nil)
+		err := d.store.Write(rc.Batch(), nil)
 		for _, l := range goodLogs {
 			if l.res != nil {
 				// report write result
