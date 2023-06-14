@@ -121,7 +121,7 @@ func (c *checkpoint) key() []byte {
 	return checkpointKey(c.epoch)
 }
 
-func (c *checkpoint) add(l *Log) {
+func (c *checkpoint) add(l *dblog) {
 	// add log
 	c.logcnt += 1
 	h := l.Hash()

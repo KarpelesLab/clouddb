@@ -39,7 +39,7 @@ func (d *DB) dumpLogs(w io.Writer, snap *leveldb.Snapshot) {
 	defer iter.Release()
 
 	for iter.Next() {
-		v := &Log{}
+		v := &dblog{}
 		err := v.UnmarshalBinary(iter.Value())
 		if err != nil {
 			fmt.Fprintf(w, " * Error: %s\n", err)

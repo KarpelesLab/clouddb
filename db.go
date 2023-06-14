@@ -25,7 +25,7 @@ type DB struct {
 	statusLk sync.RWMutex
 	statusCd *sync.Cond
 
-	runq chan *Log
+	runq chan *dblog
 	ckpt *checkpoint // current "next checkpoint" (which is typically the one updated by all the transactions we run)
 
 	typMap map[string]*Type
@@ -60,7 +60,7 @@ func New(name string, rpc RPC) (*DB, error) {
 		store:  db,
 		rpc:    rpc,
 		start:  time.Now(),
-		runq:   make(chan *Log),
+		runq:   make(chan *dblog),
 		typMap: make(map[string]*Type),
 	}
 	res.statusCd = sync.NewCond(res.statusLk.RLocker())
@@ -83,7 +83,7 @@ func (d *DB) Set(id []byte, val any) error {
 
 	// generate log entry
 	vers := newRecordVersion()
-	l := &Log{
+	l := &dblog{
 		Type:    RecordSet,
 		Id:      id,
 		Version: vers,
@@ -91,24 +91,24 @@ func (d *DB) Set(id []byte, val any) error {
 		dataobj: mapObj,
 	}
 
-	return d.newLog(l)
+	return d.newdblog(l)
 }
 
 // Delete globally removes an entry from the database
 func (d *DB) Delete(id []byte) error {
 	// generate log entry
 	vers := newRecordVersion()
-	l := &Log{
+	l := &dblog{
 		Type:    RecordDelete,
 		Id:      id,
 		Version: vers,
 	}
 
-	return d.newLog(l)
+	return d.newdblog(l)
 }
 
-// newLog receives & process an locally created log record
-func (d *DB) newLog(l *Log) error {
+// newdblog receives & process an locally created log record
+func (d *DB) newdblog(l *dblog) error {
 	l.res = make(chan error)
 	d.runq <- l
 	return <-l.res

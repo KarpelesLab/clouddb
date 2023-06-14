@@ -8,7 +8,7 @@ import (
 
 func TestLogMarshal(t *testing.T) {
 	// test log binary format
-	l := &Log{
+	l := &dblog{
 		Type:    RecordSet,
 		Id:      []byte("hello123"),
 		Version: newRecordVersion(),
@@ -24,7 +24,7 @@ func TestLogMarshal(t *testing.T) {
 		t.Errorf("Log.Bytes() and Log.WriteTo() do not have the same output")
 	}
 
-	l2 := &Log{}
+	l2 := &dblog{}
 	err := l2.UnmarshalBinary(buf1)
 	if err != nil {
 		t.Errorf("Log.UnmarshalBinary() failed: %s", err)

@@ -44,6 +44,7 @@ func (d *DB) subprocessGetNetInfo() {
 	pkt := []byte{PktGetInfo}
 	t := time.NewTicker(5 * time.Second)
 	ctx := context.Background()
+	success := 0
 
 	for i := 0; i < 10; i++ {
 		res, err := d.rpc.All(ctx, pkt)
@@ -51,6 +52,11 @@ func (d *DB) subprocessGetNetInfo() {
 			log.Printf("[clouddb] initial sync broadcast failed: %s", err)
 		} else {
 			d.feedBroadcastGetInfo(ctx, res)
+			success += 1
+			if success > 5 {
+				// let's consider we're online, TODO: unless we're syncing?
+				d.setStatus(Ready)
+			}
 		}
 		<-t.C
 	}

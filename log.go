@@ -12,15 +12,15 @@ import (
 	"github.com/syndtr/goleveldb/leveldb"
 )
 
-type LogType uint8
+type dblogType uint8
 
 const (
-	RecordSet    LogType = iota // set the full value of a record
-	RecordDelete                // delete a record
+	RecordSet    dblogType = iota // set the full value of a record
+	RecordDelete                  // delete a record
 )
 
-type Log struct {
-	Type    LogType
+type dblog struct {
+	Type    dblogType
 	Id      []byte
 	Version RecordVersion
 	Data    json.RawMessage
@@ -29,7 +29,7 @@ type Log struct {
 }
 
 // apply will execute this log after performing a number of checks
-func (l *Log) apply(rc *runContext, b *leveldb.Batch) error {
+func (l *dblog) apply(rc *runContext, b *leveldb.Batch) error {
 	// force if we cannot report errors (ie. if l.res is nil)
 	force := l.res == nil
 
@@ -126,11 +126,11 @@ func (l *Log) apply(rc *runContext, b *leveldb.Batch) error {
 }
 
 // key returns the log's internal storage key
-func (l *Log) key() []byte {
+func (l *dblog) key() []byte {
 	return append(append([]byte("log"), l.Version.Bytes()...), l.Id...)
 }
 
-func (l *Log) getObjectKeys(d *DB) ([][]byte, error) {
+func (l *dblog) getObjectKeys(d *DB) ([][]byte, error) {
 	if l.dataobj == nil {
 		// parse l.Data into l.dataobj
 		err := json.Unmarshal(l.Data, &l.dataobj)
@@ -155,7 +155,7 @@ func (l *Log) getObjectKeys(d *DB) ([][]byte, error) {
 }
 
 // Bytes return the binary representation of this log entry
-func (l *Log) Bytes() []byte {
+func (l *dblog) Bytes() []byte {
 	// prepare binary structure for log message
 	// CDBL = CloudDB Log (we use this as header so disaster recovery can at least find those records)
 
@@ -174,13 +174,13 @@ func (l *Log) Bytes() []byte {
 	return buf
 }
 
-func (l *Log) Hash() []byte {
+func (l *dblog) Hash() []byte {
 	h := sha256.New()
 	l.WriteTo(h)
 	return h.Sum(nil)
 }
 
-func (l *Log) WriteTo(w io.Writer) (int64, error) {
+func (l *dblog) WriteTo(w io.Writer) (int64, error) {
 	n1, err := w.Write([]byte("CDBL"))
 	if err != nil {
 		return int64(n1), err
@@ -219,11 +219,11 @@ func (l *Log) WriteTo(w io.Writer) (int64, error) {
 	return int64(n1), nil
 }
 
-func (l *Log) MarshalBinary() ([]byte, error) {
+func (l *dblog) MarshalBinary() ([]byte, error) {
 	return l.Bytes(), nil
 }
 
-func (l *Log) UnmarshalBinary(buf []byte) error {
+func (l *dblog) UnmarshalBinary(buf []byte) error {
 	// min len = 26(+3)
 	if len(buf) < 26 {
 		return errors.New("failed parsing log: buffer too short")
@@ -249,13 +249,13 @@ func (l *Log) UnmarshalBinary(buf []byte) error {
 	return nil
 }
 
-func (l *Log) String() string {
+func (l *dblog) String() string {
 	switch l.Type {
 	case RecordSet:
-		return fmt.Sprintf("Log SET t=%s id=%q data=%s", l.Version.Time(), l.Id, l.Data)
+		return fmt.Sprintf("SET t=%s id=%q data=%s", l.Version.Time(), l.Id, l.Data)
 	case RecordDelete:
-		return fmt.Sprintf("Log DELETE t=%s id=%q", l.Version.Time(), l.Id)
+		return fmt.Sprintf("DELETE t=%s id=%q", l.Version.Time(), l.Id)
 	default:
-		return fmt.Sprintf("Log %d(?) t=%s id=%q data=%s", l.Type, l.Version.Time(), l.Id, l.Data)
+		return fmt.Sprintf("log %d(?) t=%s id=%q data=%s", l.Type, l.Version.Time(), l.Id, l.Data)
 	}
 }

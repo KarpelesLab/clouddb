@@ -13,8 +13,8 @@ const runnerLogBuffer = 32
 // some checks, such as if a log is already applied, won't run in parallel. This method can receive logs from
 // multiple threads and will run these at the same time.
 func (d *DB) runner() {
-	logs := make([]*Log, 0, runnerLogBuffer)
-	goodLogs := make([]*Log, 0, runnerLogBuffer)
+	logs := make([]*dblog, 0, runnerLogBuffer)
+	goodLogs := make([]*dblog, 0, runnerLogBuffer)
 
 	for {
 		// wait for log to come
