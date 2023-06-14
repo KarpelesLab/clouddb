@@ -38,6 +38,8 @@ func (d *DB) dumpLogs(w io.Writer, snap *leveldb.Snapshot) {
 	iter := snap.NewIterator(util.BytesPrefix([]byte("log")), nil)
 	defer iter.Release()
 
+	fmt.Fprintf(w, "Logs:\n")
+
 	for iter.Next() {
 		v := &dblog{}
 		err := v.UnmarshalBinary(iter.Value())
@@ -52,6 +54,8 @@ func (d *DB) dumpLogs(w io.Writer, snap *leveldb.Snapshot) {
 func (d *DB) dumpCkpt(w io.Writer, snap *leveldb.Snapshot) {
 	iter := snap.NewIterator(util.BytesPrefix([]byte("chk")), nil)
 	defer iter.Release()
+
+	fmt.Fprintf(w, "Checkpoints:\n")
 
 	for iter.Next() {
 		v := &checkpoint{}

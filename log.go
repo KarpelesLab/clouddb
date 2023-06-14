@@ -8,6 +8,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"time"
 
 	"github.com/syndtr/goleveldb/leveldb"
 )
@@ -250,12 +251,13 @@ func (l *dblog) UnmarshalBinary(buf []byte) error {
 }
 
 func (l *dblog) String() string {
+	t := l.Version.Time().UTC().Format(time.RFC3339Nano)
 	switch l.Type {
 	case RecordSet:
-		return fmt.Sprintf("SET t=%s id=%q data=%s", l.Version.Time(), l.Id, l.Data)
+		return fmt.Sprintf("SET t=%s id=%q data=%s", t, l.Id, l.Data)
 	case RecordDelete:
-		return fmt.Sprintf("DELETE t=%s id=%q", l.Version.Time(), l.Id)
+		return fmt.Sprintf("DELETE t=%s id=%q", t, l.Id)
 	default:
-		return fmt.Sprintf("log %d(?) t=%s id=%q data=%s", l.Type, l.Version.Time(), l.Id, l.Data)
+		return fmt.Sprintf("log %d(?) t=%s id=%q data=%s", l.Type, t, l.Id, l.Data)
 	}
 }

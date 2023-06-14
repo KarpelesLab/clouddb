@@ -131,5 +131,6 @@ func (c *checkpoint) add(l *dblog) {
 }
 
 func (c *checkpoint) String() string {
-	return fmt.Sprintf("Checkpoint epoch=%s cnt=%d xhash=%x", c.Time(), c.logcnt, c.logsum)
+	t := c.Time().UTC().Format(time.RFC3339Nano)
+	return fmt.Sprintf("Checkpoint epoch=%s cnt=%d xhash=%x", t, c.logcnt, c.logsum)
 }
