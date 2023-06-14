@@ -26,6 +26,7 @@ type DB struct {
 	statusCd *sync.Cond
 
 	runq chan *Log
+	ckp  *checkpoint // current "next checkpoint" (which is typically the one updated by all the transactions we run)
 
 	typMap map[string]*Type
 	typLk  sync.RWMutex

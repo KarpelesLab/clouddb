@@ -19,3 +19,9 @@ func interpretObj(v any) (json.RawMessage, map[string]any, error) {
 		return nil, nil, fmt.Errorf("unsupported type %T", v)
 	}
 }
+
+func dup(in []byte) []byte {
+	out := make([]byte, len(in))
+	copy(out, in)
+	return out
+}

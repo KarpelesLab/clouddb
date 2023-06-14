@@ -61,6 +61,8 @@ func (d *DB) runner() {
 			goodLogs = append(goodLogs, l)
 		}
 
+		// update checkpoint
+
 		// write locally
 		err := d.store.Write(rc.Batch(), nil)
 		for _, l := range goodLogs {
