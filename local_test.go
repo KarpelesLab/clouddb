@@ -11,6 +11,11 @@ import (
 	"github.com/KarpelesLab/clouddb"
 )
 
+type TestObj struct {
+	Name string
+	Key  string
+}
+
 func init() {
 	clouddb.RegisterType(&clouddb.Type{
 		Name: "test1",
@@ -31,6 +36,23 @@ func init() {
 				Name:   "hellobar",
 				Fields: []string{"hello", "bar"},
 				Method: "utf8",
+				Unique: true,
+			},
+		},
+	})
+	clouddb.RegisterType(&clouddb.Type{
+		Name: "clouddb_test.TestObj",
+		Keys: []*clouddb.TypeKey{
+			&clouddb.TypeKey{
+				Name:   "Name",
+				Fields: []string{"Name"},
+				Method: "utf8",
+				Unique: false,
+			},
+			&clouddb.TypeKey{
+				Name:   "Key",
+				Fields: []string{"Key"},
+				Method: "binary",
 				Unique: true,
 			},
 		},
@@ -138,6 +160,20 @@ func TestLocal(t *testing.T) {
 		t.Errorf("failed to fetch trec006 record: %s", err)
 	} else if n, ok := v["canary"].(float64); string(id) != "trec006" || !ok || n != 4 {
 		t.Errorf("invalid record returned for hello=1&bar=a: %v", v)
+	}
+
+	// store a TestObj object
+	err = db.Set([]byte("trec009"), &TestObj{Name: "John Smith", Key: "js007"})
+	if err != nil {
+		t.Errorf("failed to insert trec009: %s", err)
+	}
+
+	var v2 *TestObj
+	id, err = db.SearchFirst("clouddb_test.TestObj", map[string]any{"Key": "js007"}, &v2)
+	if err != nil {
+		t.Errorf("failed to search trec009 record: %s", err)
+	} else if string(id) != "trec009" || v2.Name != "John Smith" {
+		t.Errorf("invalid record returned for Key=js007: %v", v2)
 	}
 
 	db.DebugDump(os.Stderr)

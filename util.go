@@ -19,7 +19,10 @@ func interpretObj(v any) (json.RawMessage, map[string]any, error) {
 		return buf, o, err
 	default:
 		// this is a bit complex...
-		typ := reflect.TypeOf(v).String()
+		typ := reflect.TypeOf(v)
+		for typ.Kind() == reflect.Ptr {
+			typ = typ.Elem()
+		}
 		buf, err := json.Marshal(v)
 		if err != nil {
 			return nil, nil, fmt.Errorf("failed to marshal object: %w", err)
@@ -30,7 +33,7 @@ func interpretObj(v any) (json.RawMessage, map[string]any, error) {
 		if err != nil {
 			return nil, nil, fmt.Errorf("failed to unmarshal object: %w", err)
 		}
-		r["@type"] = typ
+		r["@type"] = typ.String()
 		// re-marshal into json to include @type
 		buf, err = json.Marshal(r)
 		if err != nil {

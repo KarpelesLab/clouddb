@@ -4,6 +4,7 @@ import (
 	"crypto/sha256"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io/fs"
 	"net/url"
 	"strconv"
@@ -114,7 +115,7 @@ func (d *DB) getType(typ string) (*Type, error) {
 	dat, err := d.store.Get(append([]byte("typ"), typ...), nil)
 	if err != nil {
 		if errors.Is(err, leveldb.ErrNotFound) {
-			return nil, fs.ErrNotExist
+			return nil, fmt.Errorf("type %s: %w", typ, fs.ErrNotExist)
 		}
 		return nil, err
 	}
