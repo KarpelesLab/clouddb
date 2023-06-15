@@ -14,9 +14,17 @@ import (
 	"github.com/syndtr/goleveldb/leveldb/util"
 )
 
+type peerInfo struct {
+	name     string
+	good     int
+	total    int
+	syncRate float64
+}
+
 func (d *DB) process() {
 	// this runs in a goroutine
 	if d.rpc == nil {
+		d.updateSyncRate(1) // 100%
 		d.setStatus(Ready)
 		return
 	}
@@ -33,6 +41,20 @@ func (d *DB) setStatus(s Status) {
 
 	d.status = s
 	d.statusCd.Broadcast()
+}
+
+func (d *DB) updateSyncRate(val float64) {
+	d.statusLk.Lock()
+	defer d.statusLk.Unlock()
+
+	log.Printf("[clouddb] %s sync status: %01.2f%%", d.name, val*100)
+
+	d.syncRate = val
+
+	if val > .98 && d.status == Syncing {
+		d.status = Ready
+		d.statusCd.Broadcast()
+	}
 }
 
 // GetStatus returns the current status of this database instance
@@ -57,25 +79,34 @@ func (d *DB) WaitReady() {
 }
 
 func (d *DB) subprocessGetNetInfo() {
-	pkt := []byte{PktGetInfo}
-	t := time.NewTicker(5 * time.Second)
 	ctx := context.Background()
-	success := 0
+
+	// launch a few queries with short interval first to seed data quickly
+	d.doGetNetInfo(ctx)
+	time.Sleep(100 * time.Millisecond)
+	d.doGetNetInfo(ctx)
+	time.Sleep(250 * time.Millisecond)
+	d.doGetNetInfo(ctx)
+	time.Sleep(500 * time.Millisecond)
+
+	t := time.NewTicker(5 * time.Second)
+	defer t.Stop()
 
 	for i := 0; i < 10; i++ {
-		res, err := d.rpc.All(ctx, pkt)
-		if err != nil {
-			log.Printf("[clouddb] initial sync broadcast failed: %s", err)
-		} else {
-			d.feedBroadcastGetInfo(ctx, res)
-			success += 1
-			if success > 5 {
-				// let's consider we're online, TODO: unless we're syncing?
-				d.setStatus(Ready)
-			}
-		}
+		d.doGetNetInfo(ctx)
 		<-t.C
 	}
+}
+
+func (d *DB) doGetNetInfo(ctx context.Context) error {
+	res, err := d.rpc.All(ctx, []byte{PktGetInfo})
+	if err != nil {
+		log.Printf("[clouddb] initial sync broadcast failed: %s", err)
+		return err
+	} else {
+		d.feedBroadcastGetInfo(ctx, res)
+	}
+	return nil
 }
 
 func (d *DB) feedBroadcastGetInfo(ctx context.Context, data []any) {
@@ -148,22 +179,25 @@ func (d *DB) recv(ctx context.Context, buf []byte) ([]byte, error) {
 
 func (d *DB) ingestCheckpoints(peer string, buf []byte) {
 	// buf is a number of *checkpoint binary data end to end
-	log.Printf("todo check checkpoints ln=%d", len(buf))
 
 	ckpt := &checkpoint{}
 	r := bytes.NewReader(buf)
+
+	total := 0
+	good := 0
 
 	for {
 		_, err := ckpt.ReadFrom(r)
 		if err != nil {
 			if err == io.EOF {
-				return
+				break
 			}
 			log.Printf("[sync] unable to read checkpoint from peer %s: %s", peer, err)
 			// give up since we're probably not in the right location in the buffer
 			return
 		}
 
+		total += 1
 		newer, err := d.isCheckpointNewer(peer, ckpt)
 		if err != nil {
 			log.Printf("[sync] error while checking if checkpoint is newer: %s", err)
@@ -171,8 +205,48 @@ func (d *DB) ingestCheckpoints(peer string, buf []byte) {
 		}
 		if newer {
 			// need to trigger sync of transactions up to this checkpoint
+		} else {
+			good += 1
 		}
 	}
+
+	var syncRate float64
+
+	if total == good {
+		syncRate = 1
+	} else {
+		syncRate = float64(good) / float64(total)
+	}
+
+	log.Printf("[clouddb] %s checkpoints status: %d/%d sync (%01.2f%%)", peer, good, total, syncRate*100)
+	d.setPeerSyncRate(peer, good, total, syncRate)
+}
+
+func (d *DB) setPeerSyncRate(peer string, good, total int, syncRate float64) {
+	d.peersStateLk.Lock()
+	defer d.peersStateLk.Unlock()
+
+	state := &peerInfo{
+		name:     peer,
+		good:     good,
+		total:    total,
+		syncRate: syncRate,
+	}
+	d.peersState[peer] = state
+
+	var totalSync float64
+	for _, p := range d.peersState {
+		totalSync += p.syncRate
+	}
+
+	totCnt := d.rpc.CountAllPeers()
+	if totCnt < 1 {
+		// this is wrong! :(
+		// let's use our own known peers count
+		totCnt = len(d.peersState)
+	}
+
+	d.updateSyncRate(totalSync / float64(totCnt))
 }
 
 func (d *DB) isCheckpointNewer(peer string, ckpt *checkpoint) (bool, error) {

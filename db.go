@@ -24,9 +24,12 @@ type DB struct {
 	status   Status
 	statusLk sync.RWMutex
 	statusCd *sync.Cond
+	syncRate float64
 
-	runq chan *dblog
-	ckpt *checkpoint // current "next checkpoint" (which is typically the one updated by all the transactions we run)
+	runq         chan *dblog
+	ckpt         *checkpoint // current "next checkpoint" (which is typically the one updated by all the transactions we run)
+	peersState   map[string]*peerInfo
+	peersStateLk sync.RWMutex
 
 	typMap map[string]*Type
 	typLk  sync.RWMutex
@@ -56,12 +59,13 @@ func New(name string, rpc RPC) (*DB, error) {
 
 	// create db object
 	res := &DB{
-		name:   name,
-		store:  db,
-		rpc:    rpc,
-		start:  time.Now(),
-		runq:   make(chan *dblog),
-		typMap: make(map[string]*Type),
+		name:       name,
+		store:      db,
+		rpc:        rpc,
+		start:      time.Now(),
+		runq:       make(chan *dblog),
+		peersState: make(map[string]*peerInfo),
+		typMap:     make(map[string]*Type),
 	}
 	res.statusCd = sync.NewCond(res.statusLk.RLocker())
 	if rpc != nil {

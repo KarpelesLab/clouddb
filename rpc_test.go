@@ -38,6 +38,7 @@ func TestSyncRPC(t *testing.T) {
 	}
 	defer dbb.Close()
 
-	// dba.WaitReady() // should happen almost instantly on local mode
+	dba.WaitReady() // should happen almost instantly on local mode
+	dbb.WaitReady()
 	// TODO
 }
