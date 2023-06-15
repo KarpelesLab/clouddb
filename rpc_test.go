@@ -84,5 +84,27 @@ func TestSyncRPC(t *testing.T) {
 		t.Errorf("failed to read test001 from dbb")
 	}
 	log.Printf("got record from dbb: %v", v)
+
+	dba.DebugDump(os.Stderr)
+	dbb.DebugDump(os.Stderr)
+
+	// new player joins
+	rpcc := rpc.NewPeer("c")
+	dbc, err := clouddb.New(filepath.Join(p, "c"), rpcc)
+	if err != nil {
+		t.Fatalf("failed to init db c: %s", err)
+		return
+	}
+	defer dbc.Close()
+
+	dbc.WaitReady()
+
+	v = nil
+	err = dbb.Get([]byte("test001"), &v)
+	if err != nil {
+		t.Errorf("failed to read test001 from dbc")
+	}
+
+	dbc.DebugDump(os.Stderr)
 	// TODO
 }

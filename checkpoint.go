@@ -33,7 +33,7 @@ func (d *DB) nextCheckpointFor(cache map[int64]*checkpoint, t recordVersion) (*c
 		if errors.Is(err, leveldb.ErrNotFound) {
 			// generate
 			ckpt := &checkpoint{epoch: epoch + 1, db: d, logsum: make([]byte, 32)}
-			cache[ckpt.epoch] = ckpt
+			cache[epoch] = ckpt
 			return ckpt, nil
 		}
 		// ???
@@ -45,7 +45,7 @@ func (d *DB) nextCheckpointFor(cache map[int64]*checkpoint, t recordVersion) (*c
 	if err != nil {
 		return nil, err
 	}
-	cache[ckpt.epoch] = ckpt
+	cache[epoch] = ckpt
 
 	return ckpt, nil
 }

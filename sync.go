@@ -99,6 +99,18 @@ func (d *DB) subprocessGetNetInfo() {
 	}
 }
 
+func (d *DB) doGetNetInfoSingle(ctx context.Context, peer string) error {
+	buf, err := d.rpc.Request(ctx, peer, []byte{PktGetInfo})
+	if err != nil {
+		return err
+	}
+	if len(buf) > 0 && buf[0] == PktGetInfoResp {
+		_, err = d.recv(ctx, buf)
+		return err
+	}
+	return errors.New("invalid PktGetInfo response")
+}
+
 func (d *DB) doGetNetInfo(ctx context.Context) error {
 	res, err := d.rpc.All(ctx, []byte{PktGetInfo})
 	if err != nil {
@@ -400,4 +412,5 @@ func (d *DB) processLogIdsFromPeer(peer string, buf []byte) {
 		}
 		d.runq <- l
 	}
+	d.doGetNetInfoSingle(ctx, peer)
 }

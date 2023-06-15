@@ -36,7 +36,7 @@ func (d *DB) runner() {
 		rc := d.newRunCtx()
 
 		for _, l := range logs {
-			if ret, err := d.store.Has(l.key(), nil); err == nil && ret {
+			if ret, err := rc.Has(l.key()); err == nil && ret {
 				// we already know this log
 				if l.res != nil {
 					// should not happen in theory
