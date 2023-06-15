@@ -117,30 +117,12 @@ func (d *DB) doGetNetInfoSingle(ctx context.Context, peer string) error {
 }
 
 func (d *DB) doGetNetInfo(ctx context.Context) error {
-	res, err := d.rpc.All(ctx, []byte{PktGetInfo})
+	err := d.rpc.Broadcast(ctx, append([]byte{PktGetInfo}, d.rpc.Self()...))
 	if err != nil {
-		log.Printf("[clouddb] initial sync broadcast failed: %s", err)
+		log.Printf("[clouddb] GetInfo broadcast failed: %s", err)
 		return err
-	} else {
-		d.feedBroadcastGetInfo(ctx, res)
 	}
 	return nil
-}
-
-func (d *DB) feedBroadcastGetInfo(ctx context.Context, data []any) {
-	// data items can be of type error or []byte
-
-	for _, v := range data {
-		switch buf := v.(type) {
-		case error:
-			// do nothing
-		case []byte:
-			// must be a PktGetInfoResp
-			if len(buf) > 0 && buf[0] == PktGetInfoResp {
-				d.recv(ctx, buf)
-			}
-		}
-	}
 }
 
 func (d *DB) recv(ctx context.Context, buf []byte) ([]byte, error) {
