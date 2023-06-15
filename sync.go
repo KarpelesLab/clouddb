@@ -346,6 +346,13 @@ func (d *DB) sendLogIdsToPeer(peer string, epoch int64) {
 	for iter.Next() {
 		buf = append(buf, byteln8(iter.Key()[3:])...)
 		cnt += 1
+		if len(buf) > 4096 {
+			// send it now
+			d.rpc.Send(ctx, peer, append([]byte{PktLogIdsPush}, buf...))
+			// reset vars
+			buf = strln16(d.rpc.Self())
+			cnt = 0
+		}
 	}
 	if cnt > 0 {
 		d.rpc.Send(ctx, peer, append([]byte{PktLogIdsPush}, buf...))
