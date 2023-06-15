@@ -4,8 +4,10 @@ import (
 	"bytes"
 	"context"
 	"encoding/binary"
+	"errors"
 	"fmt"
 	"io"
+	"io/fs"
 	"log"
 	"time"
 
@@ -162,10 +164,40 @@ func (d *DB) ingestCheckpoints(peer string, buf []byte) {
 			return
 		}
 
-		d.ingestCheckpoint(peer, ckpt)
+		newer, err := d.isCheckpointNewer(peer, ckpt)
+		if err != nil {
+			log.Printf("[sync] error while checking if checkpoint is newer: %s", err)
+			continue
+		}
+		if newer {
+			// need to trigger sync of transactions up to this checkpoint
+		}
 	}
 }
 
-func (d *DB) ingestCheckpoint(peer string, ckpt *checkpoint) {
-	// TODO
+func (d *DB) isCheckpointNewer(peer string, ckpt *checkpoint) (bool, error) {
+	myCkpt, err := d.loadCheckpoint(ckpt.epoch)
+	if err != nil {
+		if errors.Is(err, fs.ErrNotExist) {
+			// we're missing this checkpoint
+			return true, nil
+		}
+		// can't verify system is down
+		return false, err
+	}
+
+	if myCkpt.logcnt < ckpt.logcnt {
+		// we're missing some logs
+		return true, nil
+	}
+	if myCkpt.logcnt > ckpt.logcnt {
+		// we have more logs (for now)
+		return false, nil
+	}
+	if !bytes.Equal(myCkpt.logsum, ckpt.logsum) {
+		// we have the same logcnt but not the same logs → we're missing some
+		return true, nil
+	}
+	// all is equal, all is good
+	return false, nil
 }
