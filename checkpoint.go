@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/syndtr/goleveldb/leveldb"
+	"github.com/syndtr/goleveldb/leveldb/util"
 )
 
 type checkpoint struct {
@@ -151,6 +152,27 @@ func (c *checkpoint) add(l *dblog) {
 	for i := range c.logsum {
 		c.logsum[i] ^= h[i]
 	}
+}
+
+// logRange returns a util.Range object matching all the log entries included in the calculation
+// of this checkpoint.
+func (c *checkpoint) logRange() *util.Range {
+	return &util.Range{
+		Start: logKeyPrefix(time.Unix((c.epoch-1)*86400, 0)),
+		Limit: logKeyPrefix(time.Unix((c.epoch)*86400, 0)), // exact value is excluded from results
+	}
+}
+
+func (c *checkpoint) makeList(d *DB) []byte {
+	// generate a list of entries per prefix, so we know how many log entries should exist for a given time prefix
+	iter := d.store.NewIterator(c.logRange(), nil)
+	defer iter.Release()
+
+	for iter.Next() {
+		// TODO
+	}
+
+	return nil
 }
 
 func (c *checkpoint) String() string {

@@ -131,6 +131,16 @@ func (l *dblog) key() []byte {
 	return append(append([]byte("log"), l.Version.Bytes()...), l.Id...)
 }
 
+func logKeyPrefix(t time.Time) []byte {
+	// we only put <log> + <unix>:int64 + <nano>:int32[0-999999999] so we match any srvid, log id, etc
+	buf := make([]byte, 15)
+	copy(buf, "log")
+	binary.BigEndian.PutUint64(buf[3:11], uint64(t.Unix()))
+	binary.BigEndian.PutUint32(buf[11:15], uint32(t.Nanosecond()))
+
+	return buf
+}
+
 func (l *dblog) getObjectKeys(d *DB) ([][]byte, error) {
 	if l.dataobj == nil {
 		// parse l.Data into l.dataobj
