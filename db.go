@@ -118,6 +118,11 @@ func (d *DB) newdblog(l *dblog) error {
 	return <-l.res
 }
 
+// Has will check if a given key exists
+func (d *DB) Has(id []byte) (bool, error) {
+	return d.store.Has(append([]byte("dat"), id...), nil)
+}
+
 // Get will load and apply the object for the given id to target
 func (d *DB) Get(id []byte, target any) error {
 	v, err := d.GetRaw(id)
