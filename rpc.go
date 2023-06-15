@@ -21,6 +21,12 @@ type RPC interface {
 	// to contact here with Send().
 	Self() string
 
+	// ListPeers returns a list of connected peers
+	ListOnlinePeers() []string
+
+	// CountAllPeers return the number of known connected or offline peers
+	CountAllPeers() int
+
 	// Connect connects this RPC instance incoming events to a given function
 	// that will be called each time an event is received.
 	Connect(cb func(context.Context, []byte) ([]byte, error))
