@@ -3,7 +3,6 @@ package clouddb
 import (
 	"bytes"
 	"context"
-	"encoding/binary"
 	"errors"
 	"fmt"
 	"io"
@@ -89,8 +88,15 @@ func (d *DB) subprocessGetNetInfo() {
 	time.Sleep(250 * time.Millisecond)
 	d.doGetNetInfo(ctx)
 	time.Sleep(500 * time.Millisecond)
+	d.doGetNetInfo(ctx)
+	time.Sleep(5 * time.Second)
+	d.doGetNetInfo(ctx)
+	time.Sleep(5 * time.Second)
 
 	for i := 0; i < 10; i++ {
+		if d.GetStatus() == Ready {
+			break
+		}
 		d.doGetNetInfo(ctx)
 		time.Sleep(5 * time.Second)
 	}
@@ -137,9 +143,7 @@ func (d *DB) recv(ctx context.Context, buf []byte) ([]byte, error) {
 		// if len(buf)==1 (empty packet) we return the data, else the data afterward is a node id we need to send the response to
 		res := &bytes.Buffer{}
 		res.WriteByte(PktGetInfoResp)
-		selfId := d.rpc.Self()
-		binary.Write(res, binary.BigEndian, uint16(len(selfId)))
-		res.WriteString(selfId)
+		res.Write(strln16(d.rpc.Self()))
 
 		// write all my checkpoints
 		iter := d.store.NewIterator(util.BytesPrefix([]byte("chk")), nil)
@@ -158,18 +162,11 @@ func (d *DB) recv(ctx context.Context, buf []byte) ([]byte, error) {
 	case PktGetInfoResp:
 		// Receive response
 		buf = buf[1:]
-		if len(buf) < 2 {
+		remote := getstrln16(&buf)
+		if remote == "" {
 			log.Printf("bad PktGetInfoResp pkt")
 			return nil, nil
 		}
-		ln := binary.BigEndian.Uint16(buf[:2])
-		buf = buf[2:]
-		if len(buf) < int(ln) {
-			log.Printf("bad PktGetInfoResp pkt 2")
-			return nil, nil
-		}
-		remote := string(buf[:ln])
-		buf = buf[ln:] // should be checkpoints starting this point
 		d.ingestCheckpoints(remote, buf)
 	case PktGetLogIds:
 		buf = buf[1:]
