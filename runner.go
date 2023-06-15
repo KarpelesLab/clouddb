@@ -15,6 +15,7 @@ const runnerLogBuffer = 32
 func (d *DB) runner() {
 	logs := make([]*dblog, 0, runnerLogBuffer)
 	goodLogs := make([]*dblog, 0, runnerLogBuffer)
+	bcast := make([][]byte, 0, runnerLogBuffer)
 
 	for {
 		// wait for log to come
@@ -61,8 +62,12 @@ func (d *DB) runner() {
 			goodLogs = append(goodLogs, l)
 
 			if l.res != nil {
-				// broadcast log here
+				bcast = append(bcast, l.Bytes())
 			}
+		}
+
+		if len(bcast) > 0 {
+			go d.broadcastLogs(bcast)
 		}
 
 		// update checkpoint
@@ -98,5 +103,6 @@ func (d *DB) runner() {
 		// truncate but not unallocate
 		logs = logs[:0]
 		goodLogs = goodLogs[:0]
+		bcast = bcast[:0]
 	}
 }

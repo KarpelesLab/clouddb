@@ -248,13 +248,13 @@ func (d *DB) setPeerSyncRate(peer string, good, total int, syncRate float64) {
 	}
 
 	totCnt := d.rpc.CountAllPeers()
-	if totCnt < 1 {
+	if totCnt < 2 {
 		// this is wrong! :(
 		// let's use our own known peers count
 		totCnt = len(d.peersState)
 	}
 
-	d.updateSyncRate(totalSync / float64(totCnt))
+	d.updateSyncRate(totalSync / float64(totCnt-1))
 }
 
 func (d *DB) isCheckpointNewer(peer string, ckpt *checkpoint) (bool, error) {
@@ -282,4 +282,16 @@ func (d *DB) isCheckpointNewer(peer string, ckpt *checkpoint) (bool, error) {
 	}
 	// all is equal, all is good
 	return false, nil
+}
+
+func (d *DB) broadcastLogs(data [][]byte) {
+	if d.rpc == nil {
+		return
+	}
+
+	ctx := context.Background()
+
+	for _, buf := range data {
+		d.rpc.Broadcast(ctx, append([]byte{PktLogPush}, buf...))
+	}
 }
