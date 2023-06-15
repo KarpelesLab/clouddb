@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/binary"
 	"fmt"
+	"io"
 	"log"
 	"time"
 
@@ -135,11 +136,36 @@ func (d *DB) recv(ctx context.Context, buf []byte) ([]byte, error) {
 			return nil, nil
 		}
 		remote := string(buf[:ln])
-		_ = remote
 		buf = buf[ln:] // should be checkpoints starting this point
-		log.Printf("todo check checkpoints ln=%d", len(buf))
+		d.ingestCheckpoints(remote, buf)
 	default:
 		log.Printf("[clouddb] Received object %d", buf[0])
 	}
 	return nil, nil
+}
+
+func (d *DB) ingestCheckpoints(peer string, buf []byte) {
+	// buf is a number of *checkpoint binary data end to end
+	log.Printf("todo check checkpoints ln=%d", len(buf))
+
+	ckpt := &checkpoint{}
+	r := bytes.NewReader(buf)
+
+	for {
+		_, err := ckpt.ReadFrom(r)
+		if err != nil {
+			if err == io.EOF {
+				return
+			}
+			log.Printf("[sync] unable to read checkpoint from peer %s: %s", peer, err)
+			// give up since we're probably not in the right location in the buffer
+			return
+		}
+
+		d.ingestCheckpoint(peer, ckpt)
+	}
+}
+
+func (d *DB) ingestCheckpoint(peer string, ckpt *checkpoint) {
+	// TODO
 }

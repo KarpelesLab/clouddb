@@ -4,6 +4,7 @@ import (
 	"encoding/binary"
 	"errors"
 	"fmt"
+	"io"
 	"io/fs"
 	"time"
 
@@ -105,6 +106,28 @@ func (c *checkpoint) UnmarshalBinary(b []byte) error {
 	c.totlogcnt = binary.BigEndian.Uint64(b[20:28])
 	c.logsum = dup(b[28:])
 	return nil
+}
+
+func (c *checkpoint) ReadFrom(r io.Reader) (int64, error) {
+	buf := make([]byte, 4)
+	n, err := io.ReadFull(r, buf)
+	if err != nil {
+		return int64(n), err
+	}
+	vers := binary.BigEndian.Uint32(buf)
+	if vers != 0 {
+		return int64(n), fmt.Errorf("unsupported checkpoint version=%d", vers)
+	}
+
+	// we have a 60 bytes header, means we need to read another 56 bytes
+	buf2 := make([]byte, 60)
+	copy(buf2, buf)
+	n2, err := io.ReadFull(r, buf2[4:])
+	if err != nil {
+		return int64(n + n2), err
+	}
+
+	return int64(n + n2), c.UnmarshalBinary(buf2)
 }
 
 func (c *checkpoint) Bytes() []byte {
