@@ -4,6 +4,7 @@ import (
 	"encoding/binary"
 	"encoding/json"
 	"fmt"
+	"reflect"
 )
 
 // interpretObj will accept an object and return it as a raw message and a map
@@ -17,7 +18,26 @@ func interpretObj(v any) (json.RawMessage, map[string]any, error) {
 		buf, err := json.Marshal(o)
 		return buf, o, err
 	default:
-		return nil, nil, fmt.Errorf("unsupported type %T", v)
+		// this is a bit complex...
+		typ := reflect.TypeOf(v).String()
+		buf, err := json.Marshal(v)
+		if err != nil {
+			return nil, nil, fmt.Errorf("failed to marshal object: %w", err)
+		}
+		// parse buf back to a map[string]any
+		var r map[string]any
+		err = json.Unmarshal(buf, &r)
+		if err != nil {
+			return nil, nil, fmt.Errorf("failed to unmarshal object: %w", err)
+		}
+		r["@type"] = typ
+		// re-marshal into json to include @type
+		buf, err = json.Marshal(r)
+		if err != nil {
+			return nil, nil, fmt.Errorf("failed to re-marshal object: %w", err)
+		}
+		// OK
+		return buf, r, nil
 	}
 }
 
