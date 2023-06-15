@@ -11,6 +11,7 @@ import (
 	"log"
 	"time"
 
+	"github.com/syndtr/goleveldb/leveldb"
 	"github.com/syndtr/goleveldb/leveldb/util"
 )
 
@@ -171,6 +172,21 @@ func (d *DB) recv(ctx context.Context, buf []byte) ([]byte, error) {
 		remote := string(buf[:ln])
 		buf = buf[ln:] // should be checkpoints starting this point
 		d.ingestCheckpoints(remote, buf)
+	case PktGetLogIds:
+		buf = buf[1:]
+		peer := getstrln16(&buf)
+		epoch := int64(getuint64be(&buf))
+		go d.sendLogIdsToPeer(peer, epoch)
+	case PktFetchLog:
+		// fetch a given log entry
+		key := append([]byte("log"), buf[1:]...)
+		data, err := d.store.Get(key, nil)
+		if err != nil {
+			if errors.Is(err, leveldb.ErrNotFound) {
+				err = fs.ErrNotExist
+			}
+		}
+		return data, err
 	case PktLogPush:
 		buf = buf[1:]
 		l := &dblog{}
@@ -180,6 +196,10 @@ func (d *DB) recv(ctx context.Context, buf []byte) ([]byte, error) {
 			return nil, err
 		}
 		d.runq <- l
+	case PktLogIdsPush:
+		buf = buf[1:]
+		peer := getstrln16(&buf)
+		go d.processLogIdsFromPeer(peer, buf)
 	default:
 		log.Printf("[clouddb] Received object %d", buf[0])
 	}
@@ -206,8 +226,7 @@ func (d *DB) ingestCheckpoints(peer string, buf []byte) {
 			return
 		}
 
-		total += 1
-		newer, err := d.isCheckpointNewer(peer, ckpt)
+		newer, err := d.isCheckpointNewer(peer, ckpt, &good, &total)
 		if err != nil {
 			log.Printf("[sync] error while checking if checkpoint is newer: %s", err)
 			continue
@@ -215,8 +234,6 @@ func (d *DB) ingestCheckpoints(peer string, buf []byte) {
 		if newer {
 			// need to trigger sync of transactions up to this checkpoint
 			go d.requestCheckpointFromPeer(peer, ckpt)
-		} else {
-			good += 1
 		}
 	}
 
@@ -233,8 +250,7 @@ func (d *DB) ingestCheckpoints(peer string, buf []byte) {
 }
 
 func (d *DB) requestCheckpointFromPeer(peer string, ckpt *checkpoint) {
-	bloom := ckpt.makeBloom(d) // it's not our checkpoint but it'll work just fine
-	req := append(append(append([]byte{PktGetLogs}, strln16(d.rpc.Self())...), uint64be(uint64(ckpt.epoch-1))...), bloom...)
+	req := append(append([]byte{PktGetLogIds}, strln16(d.rpc.Self())...), uint64be(uint64(ckpt.epoch-1))...)
 
 	d.rpc.Send(context.Background(), peer, req)
 }
@@ -266,7 +282,9 @@ func (d *DB) setPeerSyncRate(peer string, good, total int, syncRate float64) {
 	d.updateSyncRate(totalSync / float64(totCnt-1))
 }
 
-func (d *DB) isCheckpointNewer(peer string, ckpt *checkpoint) (bool, error) {
+func (d *DB) isCheckpointNewer(peer string, ckpt *checkpoint, good, total *int) (bool, error) {
+	*total += int(ckpt.logcnt)
+
 	myCkpt, err := d.loadCheckpoint(ckpt.epoch)
 	if err != nil {
 		if errors.Is(err, fs.ErrNotExist) {
@@ -278,9 +296,13 @@ func (d *DB) isCheckpointNewer(peer string, ckpt *checkpoint) (bool, error) {
 	}
 
 	if myCkpt.logcnt < ckpt.logcnt {
+		*good += int(myCkpt.logcnt)
 		// we're missing some logs
 		return true, nil
 	}
+	// add from ckpt because we don't want good>total
+	*good += int(ckpt.logcnt)
+
 	if myCkpt.logcnt > ckpt.logcnt {
 		// we have more logs (for now)
 		return false, nil
@@ -302,5 +324,73 @@ func (d *DB) broadcastLogs(data [][]byte) {
 
 	for _, buf := range data {
 		d.rpc.Broadcast(ctx, append([]byte{PktLogPush}, buf...))
+	}
+}
+
+func (d *DB) sendLogIdsToPeer(peer string, epoch int64) {
+	// load matching checkpoint
+	ckpt, err := d.loadCheckpoint(epoch + 1)
+	if err != nil {
+		log.Printf("[clouddb] sync failed to send epoch=%d to peer=%s: %s", epoch, peer, err)
+		return
+	}
+
+	iter := d.store.NewIterator(ckpt.logRange(), nil)
+	defer iter.Release()
+
+	ctx := context.Background()
+
+	buf := strln16(d.rpc.Self())
+	cnt := 0
+
+	for iter.Next() {
+		buf = append(buf, byteln8(iter.Key()[3:])...)
+		cnt += 1
+	}
+	if cnt > 0 {
+		d.rpc.Send(ctx, peer, append([]byte{PktLogIdsPush}, buf...))
+	}
+}
+func (d *DB) processLogIdsFromPeer(peer string, buf []byte) {
+	var missingIds [][]byte
+
+	for len(buf) > 0 {
+		id := getbyteln8(&buf)
+		if len(id) == 0 {
+			// end of list? invalid?
+			break
+		}
+		// id is a log id
+		found, err := d.store.Has(append([]byte("log"), id...), nil)
+		if err != nil {
+			log.Printf("[clouddb] processLogIdsFromPeer failed: %s", err)
+			// give up at this point
+			return
+		}
+		if !found {
+			missingIds = append(missingIds, id)
+		}
+	}
+
+	if len(missingIds) == 0 {
+		return
+	}
+
+	ctx := context.Background()
+
+	for _, id := range missingIds {
+		log.Printf("requesting log %x from %s", id, peer)
+		buf, err := d.rpc.Request(ctx, peer, append([]byte{PktFetchLog}, id...))
+		if err != nil {
+			log.Printf("[clouddb] failed fetching log id %x from %s: %s", id, peer, err)
+			continue
+		}
+		l := &dblog{}
+		err = l.UnmarshalBinary(buf)
+		if err != nil {
+			log.Printf("[clouddb] failed decoding log id %x from %s: %s", id, peer, err)
+			continue
+		}
+		d.runq <- l
 	}
 }

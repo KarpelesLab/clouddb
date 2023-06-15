@@ -37,8 +37,50 @@ func strln16(s string) []byte {
 	return buf
 }
 
+func byteln8(b []byte) []byte {
+	if len(b) > 255 {
+		b = b[:255]
+	}
+	return append([]byte{byte(len(b))}, b...)
+}
+
 func uint64be(v uint64) []byte {
 	buf := make([]byte, 8)
 	binary.BigEndian.PutUint64(buf, v)
 	return buf
+}
+
+func getstrln16(b *[]byte) string {
+	if len(*b) < 2 {
+		return ""
+	}
+	ln := binary.BigEndian.Uint16((*b)[:2])
+	if len(*b) < int(ln)+2 {
+		return ""
+	}
+	res := (*b)[2 : int(ln)+2]
+	*b = (*b)[int(ln)+2:]
+	return string(res)
+}
+
+func getuint64be(b *[]byte) uint64 {
+	if len(*b) < 8 {
+		return 0
+	}
+	v := binary.BigEndian.Uint64((*b)[:8])
+	*b = (*b)[8:]
+	return v
+}
+
+func getbyteln8(b *[]byte) []byte {
+	if len(*b) < 1 {
+		return nil
+	}
+	ln := (*b)[0]
+	if len(*b) < int(ln)+1 {
+		return nil
+	}
+	res := (*b)[1 : int(ln)+1]
+	*b = (*b)[int(ln)+1:]
+	return res
 }
