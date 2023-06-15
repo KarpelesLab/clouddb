@@ -10,7 +10,7 @@ import (
 
 // DebugDump will dump the whole database to log.DefaultLogger
 func (d *DB) DebugDump(w io.Writer) {
-	fmt.Fprintf(w, "Dumping database %s\n", d.name)
+	fmt.Fprintf(w, "Dumping database %s (status = %s)\n", d.name, d.GetStatus())
 
 	snap, err := d.store.GetSnapshot()
 	if err != nil {
