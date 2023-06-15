@@ -90,10 +90,15 @@ func (d *DB) subprocessGetNetInfo() {
 	d.doGetNetInfo(ctx)
 	time.Sleep(500 * time.Millisecond)
 
-	t := time.NewTicker(5 * time.Second)
+	for i := 0; i < 10; i++ {
+		d.doGetNetInfo(ctx)
+		time.Sleep(5 * time.Second)
+	}
+	t := time.NewTicker(time.Hour)
 	defer t.Stop()
 
-	for i := 0; i < 10; i++ {
+	for {
+		// once an hour
 		d.doGetNetInfo(ctx)
 		<-t.C
 	}
@@ -398,7 +403,6 @@ func (d *DB) processLogIdsFromPeer(peer string, buf []byte) {
 	ctx := context.Background()
 
 	for _, id := range missingIds {
-		log.Printf("requesting log %x from %s", id, peer)
 		buf, err := d.rpc.Request(ctx, peer, append([]byte{PktFetchLog}, id...))
 		if err != nil {
 			log.Printf("[clouddb] failed fetching log id %x from %s: %s", id, peer, err)
