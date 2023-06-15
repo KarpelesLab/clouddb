@@ -15,7 +15,7 @@ const runnerLogBuffer = 32
 func (d *DB) runner() {
 	logs := make([]*dblog, 0, runnerLogBuffer)
 	goodLogs := make([]*dblog, 0, runnerLogBuffer)
-	bcast := make([][]byte, 0, runnerLogBuffer)
+	var bcast [][]byte
 
 	for {
 		// wait for log to come
@@ -103,6 +103,6 @@ func (d *DB) runner() {
 		// truncate but not unallocate
 		logs = logs[:0]
 		goodLogs = goodLogs[:0]
-		bcast = bcast[:0]
+		bcast = nil
 	}
 }

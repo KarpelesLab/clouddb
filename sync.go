@@ -171,6 +171,15 @@ func (d *DB) recv(ctx context.Context, buf []byte) ([]byte, error) {
 		remote := string(buf[:ln])
 		buf = buf[ln:] // should be checkpoints starting this point
 		d.ingestCheckpoints(remote, buf)
+	case PktLogPush:
+		buf = buf[1:]
+		l := &dblog{}
+		err := l.UnmarshalBinary(buf)
+		if err != nil {
+			log.Printf("[clouddb] failed to parse log packet from peer: %s", err)
+			return nil, err
+		}
+		d.runq <- l
 	default:
 		log.Printf("[clouddb] Received object %d", buf[0])
 	}

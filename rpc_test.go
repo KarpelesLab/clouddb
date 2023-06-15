@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+	"time"
 
 	"github.com/KarpelesLab/clouddb"
 	"github.com/KarpelesLab/rpctest"
@@ -68,5 +69,20 @@ func TestSyncRPC(t *testing.T) {
 	dbb.WaitReady()
 
 	dba.Set([]byte("test001"), map[string]any{"@type": "test_rpc", "foo": "abc"})
+	dba.Set([]byte("test002"), map[string]any{"@type": "test_rpc", "foo": "def"})
+	dba.Set([]byte("test003"), map[string]any{"@type": "test_rpc", "foo": "ghi"})
+	dba.Set([]byte("test004"), map[string]any{"@type": "test_rpc", "foo": "jkl"})
+
+	dbb.Set([]byte("test005"), map[string]any{"@type": "test_rpc", "foo": "mno"})
+
+	// wait a little bit
+	time.Sleep(100 * time.Millisecond)
+
+	var v map[string]any
+	err = dbb.Get([]byte("test001"), &v)
+	if err != nil {
+		t.Errorf("failed to read test001 from dbb")
+	}
+	log.Printf("got record from dbb: %v", v)
 	// TODO
 }
