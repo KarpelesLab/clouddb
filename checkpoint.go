@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/syndtr/goleveldb/leveldb"
+	"github.com/syndtr/goleveldb/leveldb/filter"
 	"github.com/syndtr/goleveldb/leveldb/util"
 )
 
@@ -163,16 +164,23 @@ func (c *checkpoint) logRange() *util.Range {
 	}
 }
 
-func (c *checkpoint) makeList(d *DB) []byte {
+// makeBloom generates a bloom filter of the known keys, so we can send that to another peer in order
+// to ask for all log entries that we probably not know about.
+func (c *checkpoint) makeBloom(d *DB) []byte {
 	// generate a list of entries per prefix, so we know how many log entries should exist for a given time prefix
 	iter := d.store.NewIterator(c.logRange(), nil)
 	defer iter.Release()
 
+	bloom := filter.NewBloomFilter(10).NewGenerator()
+
 	for iter.Next() {
-		// TODO
+		bloom.Add(iter.Key())
 	}
 
-	return nil
+	buf := &util.Buffer{}
+	bloom.Generate(buf)
+
+	return buf.Bytes()
 }
 
 func (c *checkpoint) String() string {

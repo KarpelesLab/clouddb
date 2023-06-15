@@ -11,6 +11,32 @@ import (
 	"github.com/KarpelesLab/rpctest"
 )
 
+func init() {
+	clouddb.RegisterType(&clouddb.Type{
+		Name: "test_rpc",
+		Keys: []*clouddb.TypeKey{
+			&clouddb.TypeKey{
+				Name:   "foo",
+				Fields: []string{"foo"},
+				Method: "utf8",
+				Unique: true,
+			},
+			&clouddb.TypeKey{
+				Name:   "bar",
+				Fields: []string{"bar"},
+				Method: "binary",
+				Unique: false,
+			},
+			&clouddb.TypeKey{
+				Name:   "hellobar",
+				Fields: []string{"hello", "bar"},
+				Method: "utf8",
+				Unique: true,
+			},
+		},
+	})
+}
+
 func TestSyncRPC(t *testing.T) {
 	rpc := rpctest.NewSyncLog()
 	rpca := rpc.NewPeer("a")
@@ -40,5 +66,7 @@ func TestSyncRPC(t *testing.T) {
 
 	dba.WaitReady() // should happen almost instantly on local mode
 	dbb.WaitReady()
+
+	dba.Set([]byte("test001"), map[string]any{"@type": "test_rpc", "foo": "abc"})
 	// TODO
 }
