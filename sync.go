@@ -246,7 +246,7 @@ func (d *DB) ingestCheckpoints(peer string, buf []byte) {
 }
 
 func (d *DB) requestCheckpointFromPeer(peer string, ckpt *checkpoint) {
-	log.Printf("[clouddb] %s requesting checkpoint=%d from %s", ckpt.epoch, peer)
+	log.Printf("[clouddb] %s requesting checkpoint=[%s] from %s", d, ckpt, peer)
 	req := append(append([]byte{PktGetLogIds}, strln16(d.rpc.Self())...), uint64be(uint64(ckpt.epoch-1))...)
 
 	d.rpc.Send(context.Background(), peer, req)
