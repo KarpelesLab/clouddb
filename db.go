@@ -10,6 +10,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/KarpelesLab/rpctest"
 	"github.com/syndtr/goleveldb/leveldb"
 	"github.com/syndtr/goleveldb/leveldb/filter"
 	"github.com/syndtr/goleveldb/leveldb/opt"
@@ -61,7 +62,7 @@ func New(name string, rpc RPC) (*DB, error) {
 	res := &DB{
 		name:       name,
 		store:      db,
-		rpc:        rpc,
+		rpc:        rpctest.NewLogPeer(rpc),
 		start:      time.Now(),
 		runq:       make(chan *dblog),
 		peersState: make(map[string]*peerInfo),

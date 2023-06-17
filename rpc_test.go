@@ -39,9 +39,9 @@ func init() {
 }
 
 func TestSyncRPC(t *testing.T) {
-	rpc := rpctest.NewSyncLog()
-	rpca := rpc.NewPeer("a")
-	rpcb := rpc.NewPeer("b")
+	rpc := rpctest.NewSync()
+	rpca := rpctest.NewLogPeer(rpc.NewPeer("a"))
+	rpcb := rpctest.NewLogPeer(rpc.NewPeer("b"))
 
 	// create a local db, test stuff
 	p := filepath.Join(os.TempDir(), fmt.Sprintf("clouddb-test-%d", os.Getpid()))
@@ -89,7 +89,7 @@ func TestSyncRPC(t *testing.T) {
 	dbb.DebugDump(os.Stderr)
 
 	// new player joins
-	rpcc := rpc.NewPeer("c")
+	rpcc := rpctest.NewLogPeer(rpc.NewPeer("c"))
 	dbc, err := clouddb.New(filepath.Join(p, "c"), rpcc)
 	if err != nil {
 		t.Fatalf("failed to init db c: %s", err)
