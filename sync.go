@@ -229,7 +229,7 @@ func (d *DB) ingestCheckpoints(peer string, buf []byte) {
 		}
 		if newer {
 			// need to trigger sync of transactions up to this checkpoint
-			go d.requestCheckpointFromPeer(peer, ckpt)
+			d.requestCheckpointFromPeer(peer, ckpt)
 		}
 	}
 
@@ -249,7 +249,7 @@ func (d *DB) requestCheckpointFromPeer(peer string, ckpt *checkpoint) {
 	log.Printf("[clouddb] %s requesting checkpoint=[%s] from %s", d, ckpt, peer)
 	req := append(append([]byte{PktGetLogIds}, strln16(d.rpc.Self())...), uint64be(uint64(ckpt.epoch))...)
 
-	d.rpc.Send(context.Background(), peer, req)
+	go d.rpc.Send(context.Background(), peer, req)
 }
 
 func (d *DB) setPeerSyncRate(peer string, good, total int, syncRate float64) {
