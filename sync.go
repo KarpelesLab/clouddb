@@ -247,7 +247,7 @@ func (d *DB) ingestCheckpoints(peer string, buf []byte) {
 
 func (d *DB) requestCheckpointFromPeer(peer string, ckpt *checkpoint) {
 	log.Printf("[clouddb] %s requesting checkpoint=[%s] from %s", d, ckpt, peer)
-	req := append(append([]byte{PktGetLogIds}, strln16(d.rpc.Self())...), uint64be(uint64(ckpt.epoch-1))...)
+	req := append(append([]byte{PktGetLogIds}, strln16(d.rpc.Self())...), uint64be(uint64(ckpt.epoch))...)
 
 	d.rpc.Send(context.Background(), peer, req)
 }
@@ -326,11 +326,12 @@ func (d *DB) broadcastLogs(data [][]byte) {
 
 func (d *DB) sendLogIdsToPeer(peer string, epoch int64) {
 	// load matching checkpoint
-	ckpt, err := d.loadCheckpoint(epoch + 1)
+	ckpt, err := d.loadCheckpoint(epoch)
 	if err != nil {
 		log.Printf("[clouddb] sync failed to send epoch=%d to peer=%s: %s", epoch, peer, err)
 		return
 	}
+	log.Printf("[clouddb] Sending log ids to %s for checkpoint=[%s]", peer, ckpt)
 
 	iter := d.store.NewIterator(ckpt.logRange(), nil)
 	defer iter.Release()
