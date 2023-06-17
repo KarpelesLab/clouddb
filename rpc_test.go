@@ -105,6 +105,22 @@ func TestSyncRPC(t *testing.T) {
 		t.Errorf("failed to read test001 from dbc")
 	}
 
+	// test delete
+	err = dbc.Delete([]byte("test003"))
+	if err != nil {
+		t.Errorf("failed to delete test003 on dbc")
+	}
+
+	// wait a little bit
+	time.Sleep(100 * time.Millisecond)
+
+	// attempt to get it from dba
+	v = nil
+	err = dba.Get([]byte("test003"), &v)
+	if err == nil {
+		t.Errorf("got test003 but shouldn't have been able to load it")
+	}
+
 	dbc.DebugDump(os.Stderr)
 	// TODO
 }

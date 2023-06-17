@@ -176,7 +176,7 @@ func (l *dblog) Bytes() []byte {
 
 	buf := make([]byte, ln)
 	copy(buf[:4], "CDBL")
-	binary.BigEndian.PutUint32(buf[4:8], 0)
+	binary.BigEndian.PutUint32(buf[4:8], uint32(l.Type))
 	l.Version.Put(buf[8:24])
 	binary.BigEndian.PutUint16(buf[24:26], uint16(len(l.Id)))
 	copy(buf[26:], l.Id)
@@ -197,7 +197,7 @@ func (l *dblog) WriteTo(w io.Writer) (int64, error) {
 		return int64(n1), err
 	}
 
-	err = binary.Write(w, binary.BigEndian, uint32(0)) // version+flags
+	err = binary.Write(w, binary.BigEndian, uint32(l.Type)) // version+flags
 	n1 += 4
 	if err != nil {
 		return int64(n1), err
@@ -243,9 +243,10 @@ func (l *dblog) UnmarshalBinary(buf []byte) error {
 		return errors.New("failed parsing log: invalid header")
 	}
 	versFlags := binary.BigEndian.Uint32(buf[4:8])
-	if versFlags != 0 {
+	if versFlags&0xffffff00 != 0 {
 		return errors.New("failed parsing log: unsupported version and/or flags")
 	}
+	l.Type = dblogType(versFlags & 0xff)
 	l.Version = parseRecordVersion(buf[8:24])
 	idLen := binary.BigEndian.Uint16(buf[24:26])
 	if len(buf) < int(26+idLen) {
