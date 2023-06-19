@@ -66,3 +66,28 @@ func (d *DB) NewIteratorPrefix(pfx []byte) Iterator {
 	iter := d.store.NewIterator(util.BytesPrefix(append([]byte("dat"), pfx...)), nil)
 	return &iteratorContainer{iter}
 }
+
+type indirectIterator struct {
+	iterator.Iterator
+	prefix []byte
+	db     *DB
+}
+
+func (i *indirectIterator) Key() []byte {
+	// this is where the key actually is for indirect iterators
+	return i.Iterator.Value()
+}
+
+func (i *indirectIterator) Value() []byte {
+	// grab raw value
+	res, _ := i.db.GetRaw(i.Iterator.Value())
+	return res
+}
+
+func (i *indirectIterator) Seek([]byte) bool {
+	panic("cannot seek indirect iterators")
+}
+
+func (i *indirectIterator) Apply(v any) error {
+	return i.db.Get(i.Iterator.Value(), v)
+}
