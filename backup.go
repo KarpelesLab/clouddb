@@ -38,7 +38,7 @@ func (d *DB) BackupTo(w io.Writer) error {
 	}
 
 	// include all types, checkpoints, logs & data
-	backupPrefixes := []string{"typ", "chk", "log", "dat"}
+	backupPrefixes := []string{"typ", "chk", "log", "nfo", "dat"}
 
 	for _, pfx := range backupPrefixes {
 		err = d.backupPrefix(out, snap, pfx)
@@ -179,7 +179,7 @@ func ValidateBackup(r io.Reader) error {
 				return err
 			}
 			ckpts[ckpt.epoch] = ckpt
-			ckptVerif[ckpt.epoch] = &checkpoint{}
+			ckptVerif[ckpt.epoch] = &checkpoint{epoch: ckpt.epoch, logsum: make([]byte, 32)}
 		case "log":
 			l := &dblog{}
 			err = l.UnmarshalBinary(v)
@@ -192,6 +192,8 @@ func ValidateBackup(r io.Reader) error {
 			} else {
 				return fmt.Errorf("found log [%s] but no corresponding checkpoint", l)
 			}
+		case "nfo":
+			// check len?
 		case "dat":
 			var x map[string]any
 			err = json.Unmarshal(v, &x)
@@ -308,6 +310,12 @@ func (d *DB) RestoreFrom(r io.Reader) error {
 			}
 		}
 		tx.Put(k, v, nil)
+	}
+
+	// reindex db
+	err = d.reindexWithTransaction(tx)
+	if err != nil {
+		return err
 	}
 
 	// commit it

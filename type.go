@@ -127,6 +127,41 @@ func (d *DB) getType(typ string) (*Type, error) {
 	return t, nil
 }
 
+// getTypeTx is a variant of getType that only uses the transaction
+func (d *DB) getTypeTx(tx *leveldb.Transaction, typeCache map[string]*Type, typ string) (*Type, error) {
+	if t, ok := typeCache[typ]; ok {
+		return t, nil
+	}
+	t := getTypeFromGlobal(typ)
+	if t != nil {
+		// store in tx
+		buf, err := json.Marshal(t)
+		if err != nil {
+			return nil, err
+		}
+		err = tx.Put(append([]byte("typ"), typ...), buf, nil)
+		if err != nil {
+			return nil, err
+		}
+		typeCache[typ] = t
+		return t, nil
+	}
+	// load from tx
+	dat, err := tx.Get(append([]byte("typ"), typ...), nil)
+	if err != nil {
+		if errors.Is(err, leveldb.ErrNotFound) {
+			return nil, fmt.Errorf("type %s: %w", typ, fs.ErrNotExist)
+		}
+		return nil, err
+	}
+	err = json.Unmarshal(dat, &t)
+	if err != nil {
+		return nil, err
+	}
+	typeCache[typ] = t
+	return t, nil
+}
+
 // computeIndices returns the indices for a given object, and will always return the same value for a given object
 func (t *Type) computeIndices(id []byte, v any) [][]byte {
 	// compute indices for a given object

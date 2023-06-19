@@ -1,6 +1,7 @@
 package clouddb_test
 
 import (
+	"bytes"
 	"errors"
 	"fmt"
 	"log"
@@ -68,7 +69,7 @@ func TestLocal(t *testing.T) {
 
 	log.Printf("using this path for testing: %s", p)
 
-	db, err := clouddb.New(p, nil)
+	db, err := clouddb.New(filepath.Join(p, "test_a"), nil)
 	if err != nil {
 		t.Fatalf("failed to init db: %s", err)
 		return
@@ -177,4 +178,42 @@ func TestLocal(t *testing.T) {
 	}
 
 	db.DebugDump(os.Stderr)
+
+	// generate backup of db
+	buf := &bytes.Buffer{}
+	err = db.BackupTo(buf)
+	if err != nil {
+		t.Fatalf("failed to backup db: %s", err)
+		return
+	}
+
+	// validate backup
+	err = clouddb.ValidateBackup(bytes.NewReader(buf.Bytes()))
+	if err != nil {
+		t.Errorf("failed to validate backup: %s", err)
+	}
+
+	db2, err := clouddb.New(filepath.Join(p, "test_b"), nil)
+	if err != nil {
+		t.Fatalf("failed to init db: %s", err)
+		return
+	}
+	defer db2.Close()
+
+	db2.WaitReady() // should happen almost instantly on local mode
+
+	err = db2.RestoreFrom(bytes.NewReader(buf.Bytes()))
+	if err != nil {
+		t.Fatalf("failed to restore from backup: %s", err)
+		return
+	}
+
+	// attempt to load a record from this db
+	v = nil
+	id, err = db2.SearchFirst("test1", map[string]any{"bar": "b1"}, &v)
+	if err != nil {
+		t.Errorf("failed to fetch trec003 record: %s", err)
+	} else if n, ok := v["canary"].(float64); string(id) != "trec003" || !ok || n != 1 {
+		t.Errorf("invalid record returned for bar=b1: %v", v)
+	}
 }
