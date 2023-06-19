@@ -125,6 +125,37 @@ func TestLocal(t *testing.T) {
 		t.Errorf("invalid record returned for bar=b1: %v", v)
 	}
 
+	// search all records for bar=b1
+	siter, err := db.Search("test1", map[string]any{"bar": "b1"})
+	if err != nil {
+		t.Errorf("failed to search bar=b1: %s", err)
+	} else {
+		defer siter.Release()
+
+		canary := 1
+		cnt := 0
+
+		for siter.Next() {
+			v = nil
+			err := siter.Apply(&v)
+			if err != nil {
+				t.Errorf("failed to decode %s: %s", siter.Key(), err)
+			} else {
+				// map[@type:test1 bar:b1 canary:1]
+				// map[@type:test1 bar:b1 canary:2]
+				if n, ok := v["canary"].(float64); !ok || int(n) != canary {
+					t.Errorf("bad canary value for search result key %s", siter.Key())
+				}
+				cnt += 1
+				canary += 1
+			}
+		}
+
+		if cnt != 2 {
+			t.Errorf("search expected to yield 2 results, got %d results", cnt)
+		}
+	}
+
 	// test collation
 	err = db.Set([]byte("trec005"), map[string]any{"@type": "test1", "foo": "HÉｈé", "canary": 3})
 	if err != nil {
