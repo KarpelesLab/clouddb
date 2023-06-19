@@ -88,6 +88,25 @@ func (d *DB) loadCheckpoint(epoch int64) (*checkpoint, error) {
 	return chk, err
 }
 
+func (d *DB) loadAllCheckpoints(snap *leveldb.Snapshot) ([]*checkpoint, error) {
+	iter := snap.NewIterator(util.BytesPrefix([]byte("chk")), nil)
+	defer iter.Release()
+
+	var res []*checkpoint
+	for iter.Next() {
+		ckpt := &checkpoint{}
+		err := ckpt.UnmarshalBinary(iter.Value())
+		if err != nil {
+			// db likely corrupted, give up on the whole thing
+			return nil, err
+		}
+		res = append(res, ckpt)
+	}
+
+	return res, nil
+}
+
+// Time returns the reference time for this given checkpoint
 func (c *checkpoint) Time() time.Time {
 	return time.Unix(c.epoch*86400, 0)
 }
