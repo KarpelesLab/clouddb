@@ -1,3 +1,5 @@
+[![GoDoc](https://godoc.org/github.com/KarpelesLab/clouddb?status.svg)](https://godoc.org/github.com/KarpelesLab/clouddb)
+
 # CloudDB
 
 Another attempt at building a fault tolerant storage system.
