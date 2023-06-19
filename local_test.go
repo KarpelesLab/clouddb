@@ -187,6 +187,9 @@ func TestLocal(t *testing.T) {
 		return
 	}
 
+	log.Printf("Backup of data generated, size = %d bytes", buf.Len())
+	//log.Printf("Backup data:\n%s", hex.Dump(buf.Bytes()))
+
 	// validate backup
 	err = clouddb.ValidateBackup(bytes.NewReader(buf.Bytes()))
 	if err != nil {
@@ -215,5 +218,26 @@ func TestLocal(t *testing.T) {
 		t.Errorf("failed to fetch trec003 record: %s", err)
 	} else if n, ok := v["canary"].(float64); string(id) != "trec003" || !ok || n != 1 {
 		t.Errorf("invalid record returned for bar=b1: %v", v)
+	}
+
+	// compare all values
+	iter := db.NewIterator(nil, nil)
+
+	testkeys := ""
+
+	for iter.Next() {
+		testkeys += string(iter.Key())
+
+		db2val, err := db2.GetRaw(iter.Key())
+		if err != nil {
+			t.Errorf("failed to fetch %s from db2: %s", iter.Key(), err)
+		} else if !bytes.Equal(db2val, iter.Value()) {
+			t.Errorf("values did not match for key=%s", iter.Key())
+		}
+	}
+
+	// ensures we went over all keys
+	if testkeys != "trec001trec003trec004trec005trec006trec008trec009" {
+		t.Errorf("expected testkeys value to be ok, but got %s", testkeys)
 	}
 }
