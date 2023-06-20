@@ -145,6 +145,24 @@ func (d *DB) GetRaw(id []byte) (json.RawMessage, error) {
 	return res, err
 }
 
+func (d *DB) Search(typ string, search map[string]any) (Iterator, error) {
+	t, err := d.getType(typ)
+	if err != nil {
+		return nil, err
+	}
+	// attempt to find index
+	pfx, err := t.findSearchPrefix(search)
+	if err != nil {
+		return nil, err
+	}
+	// prepare prefix
+	kPfx := append([]byte("idx"), pfx...)
+	iter := d.store.NewIterator(util.BytesPrefix(kPfx), nil)
+
+	// return iterator
+	return &indirectIterator{Iterator: iter, prefix: kPfx, db: d}, nil
+}
+
 // SearchFirst will find the first record matching the search params and set target
 // search must match an existing key in the provided type
 func (d *DB) SearchFirst(typ string, search map[string]any, target any) ([]byte, error) {
