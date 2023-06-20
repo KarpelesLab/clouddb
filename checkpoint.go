@@ -50,23 +50,6 @@ func (d *DB) nextCheckpointFor(cache map[int64]*checkpoint, t recordVersion) (*c
 	return ckpt, nil
 }
 
-func currentEpoch() int64 {
-	return time.Now().Unix() / 86400
-}
-
-func nextEpoch() int64 {
-	return (time.Now().Unix() / 86400) + 1
-}
-
-func timeUntilNextEpoch() time.Duration {
-	// compute how long until next epoch
-	now := time.Now()
-	curE := now.Unix() / 86400
-	nextE := curE + 1
-	nextEtime := time.Unix(nextE*86400, 0)
-	return nextEtime.Sub(now)
-}
-
 func checkpointKey(epoch int64) []byte {
 	b := make([]byte, 11)
 	copy(b, "chk")

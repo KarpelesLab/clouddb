@@ -191,7 +191,7 @@ func (t *Type) computeIndices(id []byte, v any) [][]byte {
 
 func (t *Type) findSearchPrefix(search map[string]any) ([]byte, error) {
 	// attempt to find a TypeKey that has the exact same fields as search and return the prefix for this search
-	if search == nil || len(search) == 0 {
+	if len(search) == 0 {
 		// search all records of this type
 		if t == nil {
 			return []byte("undefined\x00@type\x00"), nil

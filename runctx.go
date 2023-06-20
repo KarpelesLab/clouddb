@@ -42,16 +42,12 @@ func (rc *runContext) Get(k []byte) ([]byte, error) {
 }
 
 func (rc *runContext) Put(k, v []byte) {
-	if _, f := rc.delValues[string(k)]; f {
-		delete(rc.delValues, string(k))
-	}
+	delete(rc.delValues, string(k))
 	rc.newValues[string(k)] = v
 }
 
 func (rc *runContext) Delete(k []byte) {
-	if _, f := rc.newValues[string(k)]; f {
-		delete(rc.newValues, string(k))
-	}
+	delete(rc.newValues, string(k))
 	rc.delValues[string(k)] = true
 }
 

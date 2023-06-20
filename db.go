@@ -27,7 +27,6 @@ type DB struct {
 	syncRate float64
 
 	runq         chan *dblog
-	ckpt         *checkpoint // current "next checkpoint" (which is typically the one updated by all the transactions we run)
 	peersState   map[string]*peerInfo
 	peersStateLk sync.RWMutex
 
