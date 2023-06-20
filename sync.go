@@ -47,7 +47,9 @@ func (d *DB) updateSyncRate(val float64) {
 	d.statusLk.Lock()
 	defer d.statusLk.Unlock()
 
-	log.Printf("[clouddb] %s sync status: %01.2f%%", d.name, val*100)
+	if d.status != Ready {
+		log.Printf("[clouddb] %s sync status: %01.2f%%", d.name, val*100)
+	}
 
 	d.syncRate = val
 
@@ -241,7 +243,9 @@ func (d *DB) ingestCheckpoints(peer string, buf []byte) {
 		syncRate = float64(good) / float64(total)
 	}
 
-	log.Printf("[clouddb] %s checkpoints status: %d/%d sync (%01.2f%%)", peer, good, total, syncRate*100)
+	if d.GetStatus() != Ready {
+		log.Printf("[clouddb] %s checkpoints status: %d/%d sync (%01.2f%%)", peer, good, total, syncRate*100)
+	}
 	d.setPeerSyncRate(peer, good, total, syncRate)
 }
 
