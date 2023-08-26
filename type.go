@@ -286,7 +286,7 @@ func (k *TypeKey) encodeValue(ctx *encodeValueContext, val any) []byte {
 		//log.Printf("ss = %s key = %x", ss, res)
 		return res
 	case "binary":
-		ss, _ := typutil.AsString(val)
+		ss, _ := typutil.AsByteArray(val)
 		return []byte(ss)
 	default:
 		// do same as binary

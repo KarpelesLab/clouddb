@@ -1,3 +1,5 @@
+github.com/KarpelesLab/pjson v0.1.7 h1:j0EItKHyf/dXPZJXbMAS1Ioxlq1LTNH9YmPkmX/JN3s=
+github.com/KarpelesLab/pjson v0.1.7/go.mod h1:gb4uSTld7I2kO2WvLdat1mN1brsS1hzSR+dWw1hL3iU=
 github.com/KarpelesLab/rpctest v1.0.0 h1:hl5pyHFRFm92pNXedf93zIqYput8wuAj13mik0jXpkk=
 github.com/KarpelesLab/rpctest v1.0.0/go.mod h1:8NILHdo/Al57UNURvqgk0//Y8P3wAWXBxTNVeJ8Prew=
 github.com/KarpelesLab/rpctest v1.0.1 h1:8XAsbP/ZsC0Dee8mYVgsIhgFaccZ2srVLZBGVA65szU=
@@ -16,6 +18,8 @@ github.com/KarpelesLab/typutil v0.1.2 h1:y+lbL8+wY9lPIul34pksysJFX6qQB0EIhgj1R9d
 github.com/KarpelesLab/typutil v0.1.2/go.mod h1:qAqvPstAqRLqU2TKA+ZnlO0SxL9W3x6VpJtfIFMeyDQ=
 github.com/KarpelesLab/typutil v0.1.3 h1:BTbfr9d2OuNew30SR+RSUVDnk1WPIuPVZDkT6pLxBio=
 github.com/KarpelesLab/typutil v0.1.3/go.mod h1:qAqvPstAqRLqU2TKA+ZnlO0SxL9W3x6VpJtfIFMeyDQ=
+github.com/KarpelesLab/typutil v0.1.14 h1:AUy2VIB7Igd97cynEQcMoru2nRCXjj37DeVJvyCElgI=
+github.com/KarpelesLab/typutil v0.1.14/go.mod h1:2i3R0QUCDra36M80JD0lIq3yhnKiRjtQndtX5LYYXPU=
 github.com/fsnotify/fsnotify v1.4.7/go.mod h1:jwhsz4b93w/PPRr/qN1Yymfu8t87LnFCMoQvtojpjFo=
 github.com/golang/protobuf v1.2.0/go.mod h1:6lQm79b+lXiMfvg/cZm0SGofjICqVBUtrP5yJMmIC1U=
 github.com/golang/snappy v0.0.0-20180518054509-2e65f85255db h1:woRePGFeVFfLKN/pOkfl+p/TAqKOfFu+7KPlMVpok/w=
