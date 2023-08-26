@@ -30,7 +30,7 @@ func (d *DB) dumpData(w io.Writer, snap *leveldb.Snapshot) {
 	defer iter.Release()
 
 	for iter.Next() {
-		fmt.Fprintf(w, " * %q = %s\n", iter.Key()[3:], iter.Value())
+		fmt.Fprintf(w, " * %s = %s\n", printableKey(iter.Key()[3:]), iter.Value())
 	}
 }
 

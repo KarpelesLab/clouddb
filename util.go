@@ -2,6 +2,7 @@ package clouddb
 
 import (
 	"encoding/binary"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"reflect"
@@ -106,4 +107,16 @@ func getbyteln8(b *[]byte) []byte {
 	res := (*b)[1 : int(ln)+1]
 	*b = (*b)[int(ln)+1:]
 	return res
+}
+
+// printableKey will return a key as a printable string, either quoted ASCII, or hexadecimal prefixed with 0x
+func printableKey(k []byte) string {
+	// check if all chars in k are printable
+	for _, c := range k {
+		if c < 0x32 || c >= 0x7f {
+			// not printable
+			return "0x" + hex.EncodeToString(k)
+		}
+	}
+	return fmt.Sprintf("%q", k)
 }
