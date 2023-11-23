@@ -2,7 +2,8 @@ package clouddb
 
 import (
 	"errors"
-	"log"
+	"fmt"
+	"log/slog"
 
 	"github.com/syndtr/goleveldb/leveldb"
 )
@@ -53,7 +54,7 @@ func (d *DB) runner() {
 					continue
 				}
 				// something went wrong
-				log.Printf("[clouddb] runner failed to apply log: %s", err)
+				slog.Error(fmt.Sprintf("[clouddb] runner failed to apply log: %s", err), "event", "clouddb:runner:apply_fail")
 				// don't panic since we will try to fetch this again as part of sync process
 				continue
 			}
@@ -75,7 +76,7 @@ func (d *DB) runner() {
 		for _, l := range goodLogs {
 			ckpt, err := d.nextCheckpointFor(cache, l.Version)
 			if err != nil {
-				log.Printf("[clouddb] failed to fetch checkpoint: %s", err)
+				slog.Error(fmt.Sprintf("[clouddb] failed to fetch checkpoint: %s", err), "event", "clouddb:runner:next_cp_fail")
 				// drop the whole update because wtf
 				continue
 			}
@@ -95,7 +96,7 @@ func (d *DB) runner() {
 			}
 		}
 		if err != nil {
-			log.Printf("[clouddb] write to local db failed: %s", err)
+			slog.Error(fmt.Sprintf("[clouddb] write to local db failed: %s", err), "event", "clouddb:runner:local_write_fail")
 		}
 
 		// broadcast log ids here
