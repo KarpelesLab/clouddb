@@ -32,6 +32,8 @@ type DB struct {
 
 	typMap map[string]*Type
 	typLk  sync.RWMutex
+
+	prevPkt byte // for debug
 }
 
 func New(name string, rpc RPC) (*DB, error) {

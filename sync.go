@@ -142,6 +142,7 @@ func (d *DB) recv(ctx context.Context, buf []byte) ([]byte, error) {
 
 	switch buf[0] {
 	case PktGetInfo:
+		d.prevPkt = buf[0]
 		// return info
 		// if len(buf)==1 (empty packet) we return the data, else the data afterward is a node id we need to send the response to
 		res := &bytes.Buffer{}
@@ -163,6 +164,7 @@ func (d *DB) recv(ctx context.Context, buf []byte) ([]byte, error) {
 		// send packet
 		return nil, d.rpc.Send(ctx, string(buf[1:]), res.Bytes())
 	case PktGetInfoResp:
+		d.prevPkt = buf[0]
 		// Receive response
 		buf = buf[1:]
 		remote := getstrln16(&buf)
@@ -172,11 +174,13 @@ func (d *DB) recv(ctx context.Context, buf []byte) ([]byte, error) {
 		}
 		d.ingestCheckpoints(remote, buf)
 	case PktGetLogIds:
+		d.prevPkt = buf[0]
 		buf = buf[1:]
 		peer := getstrln16(&buf)
 		epoch := int64(getuint64be(&buf))
 		go d.sendLogIdsToPeer(peer, epoch)
 	case PktFetchLog:
+		d.prevPkt = buf[0]
 		// fetch a given log entry
 		key := append([]byte("log"), buf[1:]...)
 		data, err := d.store.Get(key, nil)
@@ -187,6 +191,7 @@ func (d *DB) recv(ctx context.Context, buf []byte) ([]byte, error) {
 		}
 		return data, err
 	case PktLogPush:
+		d.prevPkt = buf[0]
 		buf = buf[1:]
 		l := &dblog{}
 		err := l.UnmarshalBinary(buf)
@@ -196,11 +201,13 @@ func (d *DB) recv(ctx context.Context, buf []byte) ([]byte, error) {
 		}
 		d.runq <- l
 	case PktLogIdsPush:
+		d.prevPkt = buf[0]
 		buf = buf[1:]
 		peer := getstrln16(&buf)
 		go d.processLogIdsFromPeer(peer, buf)
 	default:
-		slog.Warn(fmt.Sprintf("[clouddb] Received object %d:\n%s", buf[0], hex.Dump(buf)), "event", "clouddb:sync:unknown_pkt")
+		slog.Warn(fmt.Sprintf("[clouddb] Received object %d (prev=%d):\n%s", buf[0], d.prevPkt, hex.Dump(buf)), "event", "clouddb:sync:unknown_pkt")
+		d.prevPkt = buf[0]
 	}
 	return nil, nil
 }
