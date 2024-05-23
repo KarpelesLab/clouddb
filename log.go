@@ -191,6 +191,19 @@ func (l *dblog) Hash() []byte {
 	return h.Sum(nil)
 }
 
+// Valid returns true if the log entry is valid, false otherwise
+func (l *dblog) Valid() bool {
+	switch l.Type {
+	case RecordSet:
+		return json.Valid(l.Data)
+	case RecordDelete:
+		return true
+	default:
+		// bad record type
+		return false
+	}
+}
+
 func (l *dblog) WriteTo(w io.Writer) (int64, error) {
 	n1, err := w.Write([]byte("CDBL"))
 	if err != nil {
