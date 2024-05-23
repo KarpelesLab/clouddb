@@ -3,6 +3,7 @@ package clouddb
 import (
 	"bytes"
 	"context"
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"io"
@@ -199,7 +200,7 @@ func (d *DB) recv(ctx context.Context, buf []byte) ([]byte, error) {
 		peer := getstrln16(&buf)
 		go d.processLogIdsFromPeer(peer, buf)
 	default:
-		slog.Warn(fmt.Sprintf("[clouddb] Received object %d", buf[0]), "event", "clouddb:sync:unknown_pkt")
+		slog.Warn(fmt.Sprintf("[clouddb] Received object %d:\n%s", buf[0], hex.Dump(buf)), "event", "clouddb:sync:unknown_pkt")
 	}
 	return nil, nil
 }
