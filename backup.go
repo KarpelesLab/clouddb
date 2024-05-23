@@ -25,6 +25,7 @@ func (d *DB) BackupTo(w io.Writer) error {
 	if err != nil {
 		return err
 	}
+	defer snap.Release()
 
 	out := bufio.NewWriter(w)
 
