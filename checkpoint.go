@@ -185,6 +185,34 @@ func (c *checkpoint) makeBloom(d *DB) []byte {
 	return buf.Bytes()
 }
 
+// recompute will re-compute the checkpoint data based on what we know locally
+func (c *checkpoint) recompute(tx *leveldb.Transaction) error {
+	iter := tx.NewIterator(c.logRange(), nil)
+	defer iter.Release()
+
+	var logcnt uint64
+	logsum := make([]byte, 32)
+
+	for iter.Next() {
+		l := &dblog{}
+		err := l.UnmarshalBinary(iter.Value())
+		if err != nil {
+			return err
+		}
+		h := l.Hash()
+
+		logcnt += 1
+		for i := range logsum {
+			logsum[i] ^= h[i]
+		}
+	}
+
+	// update values
+	c.logcnt = logcnt
+	c.logsum = logsum
+	return nil
+}
+
 func (c *checkpoint) String() string {
 	t := c.Time().UTC().Format(time.RFC3339Nano)
 	return fmt.Sprintf("Checkpoint epoch=%s cnt=%d xhash=%x", t, c.logcnt, c.logsum)

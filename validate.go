@@ -48,3 +48,24 @@ func (d *DB) validateLogs(tx *leveldb.Transaction) error {
 	}
 	return nil
 }
+
+// validateCheckpoints will recompute each checkpoint based on new log data
+func (d *DB) validateCheckpoints(tx *leveldb.Transaction) error {
+	iter := tx.NewIterator(util.BytesPrefix([]byte("chk")), nil)
+	defer iter.Release()
+
+	for iter.Next() {
+		ckpt := &checkpoint{}
+		err := ckpt.UnmarshalBinary(iter.Value())
+		if err != nil {
+			return err
+		}
+		err = ckpt.recompute(tx)
+		if err != nil {
+			return err
+		}
+		tx.Put(iter.Key(), ckpt.Bytes(), nil)
+	}
+
+	return nil
+}
