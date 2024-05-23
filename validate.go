@@ -20,7 +20,9 @@ func (d *DB) Validate() error {
 		return err
 	}
 	// TODO check data
-	// TODO re-build indices
+	if err := d.reindexWithTransaction(tx); err != nil {
+		return err
+	}
 	return tx.Commit()
 }
 
