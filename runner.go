@@ -54,7 +54,7 @@ func (d *DB) runner() {
 					continue
 				}
 				// something went wrong
-				slog.Error(fmt.Sprintf("[clouddb] runner failed to apply log: %s", err), "event", "clouddb:runner:apply_fail")
+				slog.Error(fmt.Sprintf("[clouddb] runner failed to apply log: %s\nData: %s", err, l.Data), "event", "clouddb:runner:apply_fail")
 				// don't panic since we will try to fetch this again as part of sync process
 				continue
 			}
