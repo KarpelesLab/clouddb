@@ -1,13 +1,12 @@
 package clouddb
 
 import (
+	"context"
 	"crypto/sha256"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"io/fs"
-	"net/url"
-	"strconv"
 	"strings"
 	"sync"
 
@@ -297,25 +296,12 @@ func (k *TypeKey) encodeValue(ctx *encodeValueContext, val any) []byte {
 
 func getValueForField(v any, f string) any {
 	fa := strings.Split(f, "/")
+	var e error
+	ctx := context.Background()
 
 	for _, s := range fa {
-		switch o := v.(type) {
-		case map[string]any:
-			v = o[s]
-		case map[string]string:
-			v = o[s]
-		case url.Values:
-			v = o[s]
-		case []any:
-			n, err := strconv.ParseInt(s, 0, 64)
-			if err != nil {
-				return nil
-			}
-			if n < 0 || int(n) > len(o) {
-				return nil
-			}
-			v = o[n]
-		default:
+		v, e = typutil.OffsetGet(ctx, v, s)
+		if e != nil {
 			return nil
 		}
 	}
