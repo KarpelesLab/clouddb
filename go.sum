@@ -1,3 +1,5 @@
+github.com/KarpelesLab/dbidx v0.1.0 h1:xJ/i0Y5wlZ4dM+z6OyqYhsbgbSELa3uhCQbGRtj42VY=
+github.com/KarpelesLab/dbidx v0.1.0/go.mod h1:a9/twulLK2OhSzrk+skrR1keOoCddr2DMjuUrl1UFuU=
 github.com/KarpelesLab/pjson v0.1.7 h1:j0EItKHyf/dXPZJXbMAS1Ioxlq1LTNH9YmPkmX/JN3s=
 github.com/KarpelesLab/pjson v0.1.7/go.mod h1:gb4uSTld7I2kO2WvLdat1mN1brsS1hzSR+dWw1hL3iU=
 github.com/KarpelesLab/rpctest v1.0.0 h1:hl5pyHFRFm92pNXedf93zIqYput8wuAj13mik0jXpkk=
@@ -41,6 +43,8 @@ golang.org/x/sync v0.0.0-20180314180146-1d60e4601c6f/go.mod h1:RxMgew5VJxzue5/jJ
 golang.org/x/sys v0.0.0-20180909124046-d0be0721c37e/go.mod h1:STP8DvDyc/dI5b8T5hshtkjS+E42TnysNCUPdjciGhY=
 golang.org/x/text v0.3.0 h1:g61tztE5qeGQ89tm6NTjjM9VPIm088od1l6aSorWRWg=
 golang.org/x/text v0.3.0/go.mod h1:NqM8EUOU14njkJ3fqMW+pc6Ldnwhi/IjpwHt7yyuwOQ=
+golang.org/x/text v0.16.0 h1:a94ExnEXNtEwYLGJSIUxnWoxoRz/ZcCsV63ROupILh4=
+golang.org/x/text v0.16.0/go.mod h1:GhwF1Be+LQoKShO3cGOHzqOgRrGaYc9AvblQOmPVHnI=
 gopkg.in/check.v1 v0.0.0-20161208181325-20d25e280405/go.mod h1:Co6ibVJAznAaIkqp8huTwlJQCZ016jof/cbN4VW5Yz0=
 gopkg.in/fsnotify.v1 v1.4.7/go.mod h1:Tz8NjZHkW78fSQdbUxIjBTcgA1z1m8ZHf0WmKUhAMys=
 gopkg.in/tomb.v1 v1.0.0-20141024135613-dd632973f1e7/go.mod h1:dt/ZhP58zS4L8KSrWDmTeBkI65Dw0HsyUHuEVlX15mw=

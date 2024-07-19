@@ -1,19 +1,16 @@
 package clouddb
 
 import (
-	"context"
 	"crypto/sha256"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"io/fs"
-	"strings"
 	"sync"
 
-	"github.com/KarpelesLab/typutil"
+	"github.com/KarpelesLab/dbidx"
 	"github.com/syndtr/goleveldb/leveldb"
 	"golang.org/x/text/collate"
-	"golang.org/x/text/language"
 )
 
 var (
@@ -33,12 +30,7 @@ type Type struct {
 	Version int        `json:"version"` // version for the definition, can be set to zero
 }
 
-type TypeKey struct {
-	Name   string   `json:"name"`
-	Fields []string `json:"fields"`
-	Method string   `json:"method"` // one of: utf8, int, binary
-	Unique bool     `json:"unique,omitempty"`
-}
+type TypeKey dbidx.Index
 
 // encodeValueContext is used to optimize some aspects of value encoding
 type encodeValueContext struct {
@@ -178,11 +170,12 @@ func (t *Type) computeIndices(id []byte, v any) [][]byte {
 		json.Unmarshal(n, &v)
 	}
 
+	pfx := []byte(t.Name + "\x00")
 	res = append(res, append([]byte(t.Name+"\x00@type\x00"), id...))
 	res = append(res, append(append(append([]byte(t.Name+"\x00@version\x00"), t.Hash()...), 0), id...))
 
 	for _, k := range t.Keys {
-		res = append(res, k.computeIndices(t, id, v)...)
+		res = append(res, (*dbidx.Index)(k).ComputeIndices(pfx, id, v)...)
 	}
 
 	return res
@@ -201,6 +194,8 @@ func (t *Type) findSearchPrefix(search map[string]any) ([]byte, error) {
 		return nil, errors.New("cannot perform search on unknown/invalid type")
 	}
 
+	pfx := []byte(t.Name + "\x00")
+
 	cnt := len(search)
 keysloop:
 	for _, k := range t.Keys {
@@ -217,93 +212,8 @@ keysloop:
 		}
 
 		// found the key!
-		return k.computeSearchPrefix(t, search)
+		return (*dbidx.Index)(k).ComputeSearchPrefix(pfx, search, 0)
 	}
 
 	return nil, errors.New("no key matching search")
-}
-
-func (k *TypeKey) computeIndices(t *Type, id []byte, v any) [][]byte {
-	var res [][]byte
-	encodeCtx := &encodeValueContext{}
-
-	// start key with type name & key name
-	newKey := []byte(t.Name + "\x00" + k.Name + "\x00")
-
-	cnt := 0
-	forceNotUnique := false
-	for _, fn := range k.Fields {
-		val := getValueForField(v, fn)
-		if val == nil {
-			if cnt > 0 {
-				// partial key that ends on a nil, force it to be non-unique
-				forceNotUnique = true
-				break
-			}
-			// first part of key is missing, drop the whole key
-			return nil
-		}
-		cnt += 1
-		newKey = append(append(newKey, 0), k.encodeValue(encodeCtx, val)...)
-	}
-
-	if forceNotUnique || !k.Unique {
-		// append object ID to ensure key will not hit anything existing
-		newKey = append(append(newKey, 0), id...)
-	}
-
-	res = append(res, newKey)
-
-	return res
-}
-
-func (k *TypeKey) computeSearchPrefix(t *Type, search map[string]any) ([]byte, error) {
-	encodeCtx := &encodeValueContext{}
-	newKey := []byte(t.Name + "\x00" + k.Name + "\x00")
-
-	for _, fn := range k.Fields {
-		val := search[fn]
-		if val == nil {
-			return nil, errors.New("search value cannot be nil")
-		}
-
-		newKey = append(append(newKey, 0), k.encodeValue(encodeCtx, val)...)
-	}
-
-	return newKey, nil
-}
-
-func (k *TypeKey) encodeValue(ctx *encodeValueContext, val any) []byte {
-	switch k.Method {
-	case "utf8": // utf8_general_ci
-		col := collate.New(language.Und, collate.Loose)
-		ss, _ := typutil.AsString(val)
-		if ctx.colBuf == nil {
-			ctx.colBuf = &collate.Buffer{}
-		}
-		res := col.KeyFromString(ctx.colBuf, ss)
-		//log.Printf("ss = %s key = %x", ss, res)
-		return res
-	case "binary":
-		ss, _ := typutil.AsByteArray(val)
-		return []byte(ss)
-	default:
-		// do same as binary
-		ss, _ := typutil.AsString(val)
-		return []byte(ss)
-	}
-}
-
-func getValueForField(v any, f string) any {
-	fa := strings.Split(f, "/")
-	var e error
-	ctx := context.Background()
-
-	for _, s := range fa {
-		v, e = typutil.OffsetGet(ctx, v, s)
-		if e != nil {
-			return nil
-		}
-	}
-	return v
 }

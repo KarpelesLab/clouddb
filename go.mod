@@ -1,14 +1,13 @@
 module github.com/KarpelesLab/clouddb
 
-go 1.21
-
-toolchain go1.22.2
+go 1.22.2
 
 require (
+	github.com/KarpelesLab/dbidx v0.1.0
 	github.com/KarpelesLab/rpctest v1.1.1
 	github.com/KarpelesLab/typutil v0.2.15
 	github.com/syndtr/goleveldb v1.0.0
-	golang.org/x/text v0.3.0
+	golang.org/x/text v0.16.0
 )
 
 require (
